@@ -24,9 +24,9 @@ export default function Login() {
   };
 
   const setDemo = (type: 'admin' | 'tenant' | 'customer') => {
-    if (type === 'admin') setFormData({ email: 'admin@zamcredit.com', password: 'password', tenantCode: '' });
-    if (type === 'tenant') setFormData({ email: 'user@zambank.com', password: 'password', tenantCode: 'ZAMBANK' });
-    if (type === 'customer') setFormData({ email: 'customer@example.com', password: 'password', tenantCode: '' });
+    if (type === 'admin') setFormData({ email: 'admin@zamcredit.zm', password: 'admin123', tenantCode: '' });
+    if (type === 'tenant') setFormData({ email: 'zanaco@zamcredit.zm', password: 'zanaco123', tenantCode: '' });
+    if (type === 'customer') setFormData({ email: 'customer@zamcredit.zm', password: 'customer123', tenantCode: '' });
   };
 
   return (
