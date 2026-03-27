@@ -5,8 +5,8 @@ import { requireAuth, type AuthRequest } from "../middlewares/auth.js";
 
 const router: IRouter = Router();
 
-router.get("/:nrc", requireAuth, async (req: AuthRequest, res) => {
-  const { nrc } = req.params;
+router.get("/:p1/:p2/:p3", requireAuth, async (req: AuthRequest, res) => {
+  const nrc = `${req.params.p1}/${req.params.p2}/${req.params.p3}`;
 
   const [customer] = await db.select().from(customersTable).where(eq(customersTable.nrc, nrc));
   if (!customer) {

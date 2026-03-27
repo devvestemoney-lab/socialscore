@@ -74,11 +74,26 @@ All routes are under `/api`:
 - `POST /integrations/mfi/fetch` — Fetch mock MFI loan data
 - `GET /audit-logs` — Paginated audit log viewer
 
-## Frontend Dashboards
+## Frontend Pages (All Completed)
 
-1. **Super Admin Dashboard** (`/admin`) — Manage all tenants, system analytics, audit logs
-2. **Tenant Dashboard** (`/dashboard`) — NRC lookup, credit score view, loan exposure, risk profile
-3. **Consent Portal** (`/consent`) — Customer manages data sharing consent per data type
+### Super Admin (role: super_admin)
+- `/admin` — System overview: KPIs, API query trend chart, risk distribution pie, top tenants table
+- `/admin/tenants` — Full CRUD: list, search, create modal (with admin user), edit modal, suspend/activate, delete
+- `/admin/audit-logs` — Paginated compliance audit log with search and color-coded action badges
+
+### Tenant (roles: tenant_admin, tenant_user)
+- `/dashboard` — Credit profile lookup with 4 tabs:
+  - **Overview** — Credit score gauge, AI assessment, risk factors, score history chart, exposure summary
+  - **Score Breakdown** — 5-component bar chart (Repayment, Transaction, Defaults, Mobile Money, Account Age)
+  - **Loan Portfolio** — Individual loan records table with institution, principal, balance, rate, dates, status
+  - **Decision Engine** — Loan decision simulator with approve/refer/decline verdict + monthly payment estimate
+- `/dashboard/analytics` — Query volume bar chart, risk distribution pie, recent queries table
+
+### Customer (role: customer)
+- `/consent` — Toggle data sharing consent per category (personal, bank, mobile money, MFI, credit bureau)
+
+### Auth
+- `/login` — Login form with working demo credential quick-fill buttons
 
 ## AI Credit Scoring Model
 
