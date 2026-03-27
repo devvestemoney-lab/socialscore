@@ -1,8 +1,8 @@
-# Workspace
+# ZamCredit — Multi-Tenant Enterprise Credit Scoring Platform (Zambia)
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+A production-ready, multi-tenant enterprise credit scoring platform for Zambia. Financial institutions (banks, MFIs, fintechs) can query customer credit profiles using NRC or Passport numbers. The platform aggregates data from banks, MFIs, and mobile network operators (MNOs) to generate real-time credit scores and risk ratings using rule-based logic and AI models.
 
 ## Stack
 
@@ -10,87 +10,123 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Node.js version**: 24
 - **Package manager**: pnpm
 - **TypeScript version**: 5.9
-- **API framework**: Express 5
+- **API framework**: Express 5 (Node.js)
+- **Frontend**: React + Vite + Tailwind CSS + shadcn/ui
+- **Charts**: Recharts
 - **Database**: PostgreSQL + Drizzle ORM
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
+- **Build**: esbuild (ESM bundle)
+- **Auth**: JWT (jsonwebtoken + bcryptjs)
 
 ## Structure
 
 ```text
 artifacts-monorepo/
-├── artifacts/              # Deployable applications
-│   └── api-server/         # Express API server
-├── lib/                    # Shared libraries
+├── artifacts/
+│   ├── api-server/         # Express 5 API server (all backend logic)
+│   └── credit-platform/    # React + Vite frontend (3 dashboards)
+├── lib/
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
 │   ├── api-zod/            # Generated Zod schemas from OpenAPI
 │   └── db/                 # Drizzle ORM schema + DB connection
-├── scripts/                # Utility scripts (single workspace package)
-│   └── src/                # Individual .ts scripts, run via `pnpm --filter @workspace/scripts run <script>`
-├── pnpm-workspace.yaml     # pnpm workspace (artifacts/*, lib/*, lib/integrations/*, scripts)
-├── tsconfig.base.json      # Shared TS options (composite, bundler resolution, es2022)
-├── tsconfig.json           # Root TS project references
-└── package.json            # Root package with hoisted devDeps
+├── scripts/                # Utility scripts (seed.ts)
+├── pnpm-workspace.yaml
+├── tsconfig.base.json
+├── tsconfig.json
+└── package.json
 ```
 
-## TypeScript & Composite Projects
+## Database Schema
 
-Every package extends `tsconfig.base.json` which sets `composite: true`. The root `tsconfig.json` lists all packages as project references. This means:
+- **tenants** — Banks, MFIs, fintechs with isolated config and API keys
+- **users** — Platform users with roles (super_admin, tenant_admin, tenant_user, customer)
+- **customers** — Zambian customers identified by NRC or Passport
+- **credit_scores** — Historical credit score records per customer
+- **loans** — Loan records from all institutions (bank, mfi, mno)
+- **consents** — Customer data sharing consent records per tenant/data type
+- **audit_logs** — Full audit trail of all API actions
 
-- **Always typecheck from the root** — run `pnpm run typecheck` (which runs `tsc --build --emitDeclarationOnly`). This builds the full dependency graph so that cross-package imports resolve correctly. Running `tsc` inside a single package will fail if its dependencies haven't been built yet.
-- **`emitDeclarationOnly`** — we only emit `.d.ts` files during typecheck; actual JS bundling is handled by esbuild/tsx/vite...etc, not `tsc`.
-- **Project references** — when package A depends on package B, A's `tsconfig.json` must list B in its `references` array. `tsc --build` uses this to determine build order and skip up-to-date packages.
+## API Routes
 
-## Root Scripts
+All routes are under `/api`:
 
-- `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages that define it
-- `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly` using project references
+- `GET /healthz` — Health check
+- `POST /auth/login` — JWT login
+- `GET /auth/me` — Current user profile
+- `POST /identity/verify` — Verify customer by NRC/Passport/Phone
+- `GET /credit-score/:nrc` — Full credit score with breakdown
+- `GET /loan-exposure/:nrc` — Total loan exposure across all institutions
+- `GET /risk-profile/:nrc` — Complete risk profile with AI insights
+- `POST /consent/grant` — Grant data sharing consent
+- `POST /consent/revoke` — Revoke consent
+- `GET /consent/status` — Get active consents
+- `GET /tenants` — List tenants (super admin)
+- `POST /tenants` — Create tenant (super admin)
+- `PUT /tenants/:id` — Update tenant (super admin)
+- `DELETE /tenants/:id` — Delete tenant (super admin)
+- `POST /tenants/:id/api-key` — Regenerate API key
+- `GET /analytics/system` — System-wide analytics (super admin)
+- `GET /analytics/tenant` — Tenant-specific analytics
+- `POST /integrations/bank/fetch` — Fetch mock bank data
+- `POST /integrations/mno/fetch` — Fetch mock MNO mobile money data
+- `POST /integrations/mfi/fetch` — Fetch mock MFI loan data
+- `GET /audit-logs` — Paginated audit log viewer
 
-## Packages
+## Frontend Dashboards
 
-### `artifacts/api-server` (`@workspace/api-server`)
+1. **Super Admin Dashboard** (`/admin`) — Manage all tenants, system analytics, audit logs
+2. **Tenant Dashboard** (`/dashboard`) — NRC lookup, credit score view, loan exposure, risk profile
+3. **Consent Portal** (`/consent`) — Customer manages data sharing consent per data type
 
-Express 5 API server. Routes live in `src/routes/` and use `@workspace/api-zod` for request and response validation and `@workspace/db` for persistence.
+## AI Credit Scoring Model
 
-- Entry: `src/index.ts` — reads `PORT`, starts Express
-- App setup: `src/app.ts` — mounts CORS, JSON/urlencoded parsing, routes at `/api`
-- Routes: `src/routes/index.ts` mounts sub-routers; `src/routes/health.ts` exposes `GET /health` (full path: `/api/health`)
-- Depends on: `@workspace/db`, `@workspace/api-zod`
-- `pnpm --filter @workspace/api-server run dev` — run the dev server
-- `pnpm --filter @workspace/api-server run build` — production esbuild bundle (`dist/index.cjs`)
-- Build bundles an allowlist of deps (express, cors, pg, drizzle-orm, zod, etc.) and externalizes the rest
+Logistic regression approximation with 5 components:
+- **Repayment History** (0–300): Based on missed payments and loan completion rate
+- **Loan Defaults** (0–200): Penalizes defaulted/written-off loans
+- **Transaction Patterns** (0–250): Average monthly transactions + volume
+- **Mobile Money** (0–150): Mobile money balance as proxy for financial inclusion
+- **Account Age** (0–100): Length of credit history
 
-### `lib/db` (`@workspace/db`)
+Output: Score (0–1000), Rating, Probability of Default, Risk Level, AI Insights, Recommended Credit Limit
 
-Database layer using Drizzle ORM with PostgreSQL. Exports a Drizzle client instance and schema models.
+## Demo Credentials
 
-- `src/index.ts` — creates a `Pool` + Drizzle instance, exports schema
-- `src/schema/index.ts` — barrel re-export of all models
-- `src/schema/<modelname>.ts` — table definitions with `drizzle-zod` insert schemas (no models definitions exist right now)
-- `drizzle.config.ts` — Drizzle Kit config (requires `DATABASE_URL`, automatically provided by Replit)
-- Exports: `.` (pool, db, schema), `./schema` (schema only)
+| Role | Email | Password |
+|------|-------|----------|
+| Super Admin | admin@zamcredit.zm | admin123 |
+| Tenant (Zanaco Bank) | zanaco@zamcredit.zm | zanaco123 |
+| Tenant (FINCA) | finca@zamcredit.zm | finca123 |
+| Customer | customer@zamcredit.zm | customer123 |
 
-Production migrations are handled by Replit when publishing. In development, we just use `pnpm --filter @workspace/db run push`, and we fallback to `pnpm --filter @workspace/db run push-force`.
+## Demo NRC Numbers
 
-### `lib/api-spec` (`@workspace/api-spec`)
+| Customer | NRC | Expected Score |
+|----------|-----|----------------|
+| Chanda Mwila | 12/345678/67 | Excellent (~905) |
+| Mutale Bwalya | 87/654321/32 | Fair |
+| Thandiwe Phiri | 34/789012/45 | Very Poor (defaults) |
+| Joseph Lungu | 56/111222/78 | Excellent |
+| Grace Tembo | 90/333444/12 | Fair |
 
-Owns the OpenAPI 3.1 spec (`openapi.yaml`) and the Orval config (`orval.config.ts`). Running codegen produces output into two sibling packages:
+## Mock External Integrations
 
-1. `lib/api-client-react/src/generated/` — React Query hooks + fetch client
-2. `lib/api-zod/src/generated/` — Zod schemas
+Deterministic seeded random data generators simulate:
+- **Bank connector**: Account balances, transaction history from Zanaco, Stanbic, FNB, etc.
+- **MNO connector**: Mobile money balance, transaction volumes from MTN, Airtel Money, Zamtel
+- **MFI connector**: Loan records from FINCA, Bayport, VisionFund, BRAC Zambia
 
-Run codegen: `pnpm --filter @workspace/api-spec run codegen`
+## Security
 
-### `lib/api-zod` (`@workspace/api-zod`)
+- JWT authentication with 24h expiry
+- Role-based access control (RBAC): super_admin > tenant_admin > tenant_user > customer
+- Multi-tenant data isolation (each tenant only sees their data)
+- Full audit logging of all API actions
+- Passwords hashed with bcryptjs
 
-Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used by `api-server` for response validation.
+## Scripts
 
-### `lib/api-client-react` (`@workspace/api-client-react`)
-
-Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
-
-### `scripts` (`@workspace/scripts`)
-
-Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
+- `pnpm --filter @workspace/db run push` — Push DB schema
+- `pnpm --filter @workspace/scripts run seed` — Seed demo data
+- `pnpm --filter @workspace/api-spec run codegen` — Regenerate API types

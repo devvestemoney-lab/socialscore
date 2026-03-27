@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Zambia Credit Scoring Platform"
+version = "1.0.0"
+id = "artifacts/credit-platform"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21484
+
+[services.development]
+run = "pnpm --filter @workspace/credit-platform run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/credit-platform", "run", "build" ]
+publicDir = "artifacts/credit-platform/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21484"
+BASE_PATH = "/"

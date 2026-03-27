@@ -1,22 +1,39 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 1.0.0
+  description: Zambia Multi-Tenant Enterprise Credit Scoring Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: identity
+    description: Identity verification
+  - name: credit
+    description: Credit scoring operations
+  - name: loans
+    description: Loan exposure operations
+  - name: risk
+    description: Risk profile operations
+  - name: consent
+    description: Consent management
+  - name: tenants
+    description: Tenant management (super admin)
+  - name: analytics
+    description: Analytics and reporting
+  - name: integrations
+    description: External data integrations
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,7 +41,462 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout user
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get current user profile
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  /identity/verify:
+    post:
+      operationId: verifyIdentity
+      tags: [identity]
+      summary: Verify customer identity by NRC or Passport
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IdentityVerifyRequest"
+      responses:
+        "200":
+          description: Identity verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityVerifyResponse"
+        "404":
+          description: Identity not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /credit-score/{nrc}:
+    get:
+      operationId: getCreditScore
+      tags: [credit]
+      summary: Get credit score for a customer
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: nrc
+          in: path
+          required: true
+          schema:
+            type: string
+          description: National Registration Card number or passport number
+      responses:
+        "200":
+          description: Credit score
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditScoreResponse"
+        "404":
+          description: Customer not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /loan-exposure/{nrc}:
+    get:
+      operationId: getLoanExposure
+      tags: [loans]
+      summary: Get total loan exposure across all institutions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: nrc
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Loan exposure summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanExposureResponse"
+
+  /risk-profile/{nrc}:
+    get:
+      operationId: getRiskProfile
+      tags: [risk]
+      summary: Get full risk profile for a customer
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: nrc
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Risk profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskProfileResponse"
+
+  /consent/grant:
+    post:
+      operationId: grantConsent
+      tags: [consent]
+      summary: Grant data sharing consent
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConsentGrantRequest"
+      responses:
+        "200":
+          description: Consent granted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentResponse"
+
+  /consent/revoke:
+    post:
+      operationId: revokeConsent
+      tags: [consent]
+      summary: Revoke data sharing consent
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConsentRevokeRequest"
+      responses:
+        "200":
+          description: Consent revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentResponse"
+
+  /consent/status:
+    get:
+      operationId: getConsentStatus
+      tags: [consent]
+      summary: Get consent status for current user
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Consent status list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentStatusResponse"
+
+  /tenants:
+    get:
+      operationId: listTenants
+      tags: [tenants]
+      summary: List all tenants (super admin only)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: List of tenants
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantListResponse"
+    post:
+      operationId: createTenant
+      tags: [tenants]
+      summary: Create a new tenant
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTenantRequest"
+      responses:
+        "201":
+          description: Tenant created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+
+  /tenants/{tenantId}:
+    get:
+      operationId: getTenant
+      tags: [tenants]
+      summary: Get tenant details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Tenant details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+    put:
+      operationId: updateTenant
+      tags: [tenants]
+      summary: Update tenant
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTenantRequest"
+      responses:
+        "200":
+          description: Tenant updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+    delete:
+      operationId: deleteTenant
+      tags: [tenants]
+      summary: Delete tenant
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Tenant deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /tenants/{tenantId}/api-key:
+    post:
+      operationId: regenerateTenantApiKey
+      tags: [tenants]
+      summary: Regenerate API key for tenant
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: New API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKeyResponse"
+
+  /analytics/system:
+    get:
+      operationId: getSystemAnalytics
+      tags: [analytics]
+      summary: Get system-wide analytics (super admin)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: System analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemAnalytics"
+
+  /analytics/tenant:
+    get:
+      operationId: getTenantAnalytics
+      tags: [analytics]
+      summary: Get tenant-specific analytics
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Tenant analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantAnalytics"
+
+  /integrations/bank/fetch:
+    post:
+      operationId: fetchBankData
+      tags: [integrations]
+      summary: Fetch bank data for a customer (mock)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FetchDataRequest"
+      responses:
+        "200":
+          description: Bank data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankDataResponse"
+
+  /integrations/mno/fetch:
+    post:
+      operationId: fetchMnoData
+      tags: [integrations]
+      summary: Fetch mobile money data from MNO (mock)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FetchDataRequest"
+      responses:
+        "200":
+          description: MNO mobile money data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MnoDataResponse"
+
+  /integrations/mfi/fetch:
+    post:
+      operationId: fetchMfiData
+      tags: [integrations]
+      summary: Fetch MFI loan data (mock)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FetchDataRequest"
+      responses:
+        "200":
+          description: MFI loan data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MfiDataResponse"
+
+  /audit-logs:
+    get:
+      operationId: getAuditLogs
+      tags: [analytics]
+      summary: Get audit logs
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Audit logs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogListResponse"
+
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +506,930 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+        - message
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+        - message
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        tenantCode:
+          type: string
+          description: Optional tenant code for tenant users
+      required:
+        - email
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/UserProfile"
+        expiresAt:
+          type: string
+          format: date-time
+      required:
+        - token
+        - user
+        - expiresAt
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [super_admin, tenant_admin, tenant_user, customer]
+        tenantId:
+          type: string
+          nullable: true
+        tenantName:
+          type: string
+          nullable: true
+      required:
+        - id
+        - email
+        - name
+        - role
+
+    IdentityVerifyRequest:
+      type: object
+      properties:
+        nrc:
+          type: string
+          description: National Registration Card number
+        passport:
+          type: string
+          description: Passport number
+        phone:
+          type: string
+          description: Phone number
+      minProperties: 1
+
+    IdentityVerifyResponse:
+      type: object
+      properties:
+        verified:
+          type: boolean
+        customer:
+          $ref: "#/components/schemas/CustomerProfile"
+        message:
+          type: string
+      required:
+        - verified
+
+    CustomerProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        nrc:
+          type: string
+        passport:
+          type: string
+          nullable: true
+        firstName:
+          type: string
+        lastName:
+          type: string
+        dateOfBirth:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          nullable: true
+        province:
+          type: string
+        consentGiven:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - nrc
+        - firstName
+        - lastName
+        - dateOfBirth
+        - phone
+        - province
+        - consentGiven
+        - createdAt
+
+    CreditScoreResponse:
+      type: object
+      properties:
+        nrc:
+          type: string
+        customerId:
+          type: string
+        score:
+          type: number
+          minimum: 0
+          maximum: 1000
+        rating:
+          type: string
+          enum: [Excellent, Good, Fair, Poor, Very Poor]
+        probabilityOfDefault:
+          type: number
+          minimum: 0
+          maximum: 1
+        scoreBreakdown:
+          $ref: "#/components/schemas/ScoreBreakdown"
+        recommendation:
+          type: string
+        lastUpdated:
+          type: string
+          format: date-time
+        historicalScores:
+          type: array
+          items:
+            $ref: "#/components/schemas/HistoricalScore"
+      required:
+        - nrc
+        - customerId
+        - score
+        - rating
+        - probabilityOfDefault
+        - scoreBreakdown
+        - recommendation
+        - lastUpdated
+
+    ScoreBreakdown:
+      type: object
+      properties:
+        repaymentHistory:
+          type: number
+          description: Score component from repayment history (0-300)
+        loanDefaults:
+          type: number
+          description: Score component from defaults (0-200)
+        transactionPatterns:
+          type: number
+          description: Score component from transaction patterns (0-250)
+        mobileMoney:
+          type: number
+          description: Score component from mobile money usage (0-150)
+        accountAge:
+          type: number
+          description: Score component from account age (0-100)
+      required:
+        - repaymentHistory
+        - loanDefaults
+        - transactionPatterns
+        - mobileMoney
+        - accountAge
+
+    HistoricalScore:
+      type: object
+      properties:
+        score:
+          type: number
+        date:
+          type: string
+          format: date-time
+        rating:
+          type: string
+      required:
+        - score
+        - date
+        - rating
+
+    LoanExposureResponse:
+      type: object
+      properties:
+        nrc:
+          type: string
+        totalExposure:
+          type: number
+          description: Total loan exposure in ZMW
+        currency:
+          type: string
+          default: ZMW
+        activeLoans:
+          type: integer
+        defaultedLoans:
+          type: integer
+        closedLoans:
+          type: integer
+        loans:
+          type: array
+          items:
+            $ref: "#/components/schemas/LoanRecord"
+        institutions:
+          type: array
+          items:
+            $ref: "#/components/schemas/InstitutionExposure"
+      required:
+        - nrc
+        - totalExposure
+        - currency
+        - activeLoans
+        - defaultedLoans
+        - closedLoans
+        - loans
+        - institutions
+
+    LoanRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        institution:
+          type: string
+        institutionType:
+          type: string
+          enum: [bank, mfi, mno]
+        amount:
+          type: number
+        currency:
+          type: string
+        outstandingBalance:
+          type: number
+        status:
+          type: string
+          enum: [active, defaulted, closed, written_off]
+        disbursedAt:
+          type: string
+          format: date-time
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+        interestRate:
+          type: number
+        missedPayments:
+          type: integer
+      required:
+        - id
+        - institution
+        - institutionType
+        - amount
+        - currency
+        - outstandingBalance
+        - status
+        - disbursedAt
+        - interestRate
+        - missedPayments
+
+    InstitutionExposure:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [bank, mfi, mno]
+        totalExposure:
+          type: number
+        activeLoans:
+          type: integer
+      required:
+        - name
+        - type
+        - totalExposure
+        - activeLoans
+
+    RiskProfileResponse:
+      type: object
+      properties:
+        nrc:
+          type: string
+        customer:
+          $ref: "#/components/schemas/CustomerProfile"
+        creditScore:
+          $ref: "#/components/schemas/CreditScoreResponse"
+        loanExposure:
+          $ref: "#/components/schemas/LoanExposureResponse"
+        riskLevel:
+          type: string
+          enum: [Low, Medium, High, Very High, Critical]
+        riskFactors:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskFactor"
+        recommendedCreditLimit:
+          type: number
+        aiInsights:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+      required:
+        - nrc
+        - customer
+        - creditScore
+        - loanExposure
+        - riskLevel
+        - riskFactors
+        - recommendedCreditLimit
+        - aiInsights
+        - generatedAt
+
+    RiskFactor:
+      type: object
+      properties:
+        factor:
+          type: string
+        impact:
+          type: string
+          enum: [positive, negative, neutral]
+        description:
+          type: string
+        weight:
+          type: number
+      required:
+        - factor
+        - impact
+        - description
+        - weight
+
+    ConsentGrantRequest:
+      type: object
+      properties:
+        dataTypes:
+          type: array
+          items:
+            type: string
+            enum: [bank_data, mobile_money, mfi_loans, credit_history, personal_info]
+        tenantId:
+          type: string
+          description: Tenant requesting consent
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - dataTypes
+
+    ConsentRevokeRequest:
+      type: object
+      properties:
+        dataTypes:
+          type: array
+          items:
+            type: string
+        tenantId:
+          type: string
+          nullable: true
+      required:
+        - dataTypes
+
+    ConsentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        consents:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentRecord"
+      required:
+        - success
+        - consents
+
+    ConsentRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        dataType:
+          type: string
+        tenantId:
+          type: string
+          nullable: true
+        tenantName:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [active, revoked]
+        grantedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - dataType
+        - status
+        - grantedAt
+
+    ConsentStatusResponse:
+      type: object
+      properties:
+        customerId:
+          type: string
+        consents:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentRecord"
+      required:
+        - customerId
+        - consents
+
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        code:
+          type: string
+        type:
+          type: string
+          enum: [bank, mfi, fintech, mno]
+        status:
+          type: string
+          enum: [active, suspended, inactive]
+        contactEmail:
+          type: string
+        apiCallsThisMonth:
+          type: integer
+        totalQueries:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        settings:
+          $ref: "#/components/schemas/TenantSettings"
+      required:
+        - id
+        - name
+        - code
+        - type
+        - status
+        - contactEmail
+        - apiCallsThisMonth
+        - totalQueries
+        - createdAt
+
+    TenantSettings:
+      type: object
+      properties:
+        scoringModel:
+          type: string
+          enum: [standard, conservative, aggressive]
+        maxLoanAmount:
+          type: number
+        requireConsent:
+          type: boolean
+        allowedDataTypes:
+          type: array
+          items:
+            type: string
+      required:
+        - scoringModel
+        - maxLoanAmount
+        - requireConsent
+        - allowedDataTypes
+
+    TenantListResponse:
+      type: object
+      properties:
+        tenants:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tenant"
+        total:
+          type: integer
+      required:
+        - tenants
+        - total
+
+    CreateTenantRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        type:
+          type: string
+          enum: [bank, mfi, fintech, mno]
+        contactEmail:
+          type: string
+        adminName:
+          type: string
+        adminPassword:
+          type: string
+        settings:
+          $ref: "#/components/schemas/TenantSettings"
+      required:
+        - name
+        - code
+        - type
+        - contactEmail
+        - adminName
+        - adminPassword
+
+    UpdateTenantRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [active, suspended, inactive]
+        contactEmail:
+          type: string
+        settings:
+          $ref: "#/components/schemas/TenantSettings"
+
+    ApiKeyResponse:
+      type: object
+      properties:
+        apiKey:
+          type: string
+        tenantId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - apiKey
+        - tenantId
+        - createdAt
+
+    SystemAnalytics:
+      type: object
+      properties:
+        totalTenants:
+          type: integer
+        activeTenants:
+          type: integer
+        totalCustomers:
+          type: integer
+        totalQueries:
+          type: integer
+        queriesThisMonth:
+          type: integer
+        avgCreditScore:
+          type: number
+        riskDistribution:
+          $ref: "#/components/schemas/RiskDistribution"
+        queryTrend:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrendPoint"
+        topTenants:
+          type: array
+          items:
+            $ref: "#/components/schemas/TenantUsage"
+        scoreDistribution:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScoreDistributionBucket"
+      required:
+        - totalTenants
+        - activeTenants
+        - totalCustomers
+        - totalQueries
+        - queriesThisMonth
+        - avgCreditScore
+        - riskDistribution
+        - queryTrend
+        - topTenants
+        - scoreDistribution
+
+    TenantAnalytics:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        tenantName:
+          type: string
+        queriesThisMonth:
+          type: integer
+        totalQueries:
+          type: integer
+        avgCreditScore:
+          type: number
+        approvalRate:
+          type: number
+        riskDistribution:
+          $ref: "#/components/schemas/RiskDistribution"
+        recentQueries:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecentQuery"
+        queryTrend:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrendPoint"
+      required:
+        - tenantId
+        - tenantName
+        - queriesThisMonth
+        - totalQueries
+        - avgCreditScore
+        - approvalRate
+        - riskDistribution
+        - recentQueries
+        - queryTrend
+
+    RiskDistribution:
+      type: object
+      properties:
+        low:
+          type: integer
+        medium:
+          type: integer
+        high:
+          type: integer
+        veryHigh:
+          type: integer
+        critical:
+          type: integer
+      required:
+        - low
+        - medium
+        - high
+        - veryHigh
+        - critical
+
+    TrendPoint:
+      type: object
+      properties:
+        date:
+          type: string
+        value:
+          type: number
+        label:
+          type: string
+      required:
+        - date
+        - value
+
+    TenantUsage:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        tenantName:
+          type: string
+        queries:
+          type: integer
+        type:
+          type: string
+      required:
+        - tenantId
+        - tenantName
+        - queries
+        - type
+
+    ScoreDistributionBucket:
+      type: object
+      properties:
+        range:
+          type: string
+        count:
+          type: integer
+        percentage:
+          type: number
+      required:
+        - range
+        - count
+        - percentage
+
+    RecentQuery:
+      type: object
+      properties:
+        id:
+          type: string
+        nrc:
+          type: string
+        customerName:
+          type: string
+        score:
+          type: number
+        rating:
+          type: string
+        queriedAt:
+          type: string
+          format: date-time
+        decision:
+          type: string
+          enum: [approved, declined, referred]
+      required:
+        - id
+        - nrc
+        - customerName
+        - score
+        - rating
+        - queriedAt
+        - decision
+
+    FetchDataRequest:
+      type: object
+      properties:
+        nrc:
+          type: string
+      required:
+        - nrc
+
+    BankDataResponse:
+      type: object
+      properties:
+        nrc:
+          type: string
+        accounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/BankAccount"
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+        source:
+          type: string
+      required:
+        - nrc
+        - accounts
+        - transactions
+        - source
+
+    MnoDataResponse:
+      type: object
+      properties:
+        nrc:
+          type: string
+        mobileMoneyBalance:
+          type: number
+        averageMonthlyTransactions:
+          type: number
+        totalTransactionVolume:
+          type: number
+        accountAge:
+          type: integer
+          description: Account age in months
+        airtime:
+          type: number
+        source:
+          type: string
+      required:
+        - nrc
+        - mobileMoneyBalance
+        - averageMonthlyTransactions
+        - totalTransactionVolume
+        - accountAge
+        - airtime
+        - source
+
+    MfiDataResponse:
+      type: object
+      properties:
+        nrc:
+          type: string
+        loans:
+          type: array
+          items:
+            $ref: "#/components/schemas/LoanRecord"
+        repaymentRate:
+          type: number
+        source:
+          type: string
+      required:
+        - nrc
+        - loans
+        - repaymentRate
+        - source
+
+    BankAccount:
+      type: object
+      properties:
+        id:
+          type: string
+        accountNumber:
+          type: string
+        type:
+          type: string
+          enum: [savings, current, fixed_deposit]
+        balance:
+          type: number
+        currency:
+          type: string
+        bank:
+          type: string
+        openedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - accountNumber
+        - type
+        - balance
+        - currency
+        - bank
+        - openedAt
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [credit, debit]
+        amount:
+          type: number
+        currency:
+          type: string
+        description:
+          type: string
+        date:
+          type: string
+          format: date-time
+        category:
+          type: string
+      required:
+        - id
+        - type
+        - amount
+        - currency
+        - description
+        - date
+        - category
+
+    AuditLogListResponse:
+      type: object
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLog"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - logs
+        - total
+        - page
+        - limit
+
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+        action:
+          type: string
+        userId:
+          type: string
+        tenantId:
+          type: string
+          nullable: true
+        targetNrc:
+          type: string
+          nullable: true
+        ipAddress:
+          type: string
+          nullable: true
+        details:
+          type: object
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - action
+        - userId
+        - createdAt

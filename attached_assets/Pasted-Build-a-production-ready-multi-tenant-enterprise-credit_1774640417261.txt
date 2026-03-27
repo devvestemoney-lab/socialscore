@@ -1,0 +1,108 @@
+Build a production-ready multi-tenant enterprise credit scoring platform for Zambia.
+
+SYSTEM OVERVIEW:
+The platform aggregates financial data from banks, MFIs, and mobile network operators (MNOs) via APIs. It uses NRC or Passport as a unique identifier to create a unified financial profile and generate a real-time credit score and risk rating using both rule-based logic and AI models.
+
+CORE REQUIREMENTS:
+
+1. MULTI-TENANT ARCHITECTURE
+
+* Each tenant (bank, MFI, fintech) must have isolated data access
+* Support tenant-specific scoring rules and configurations
+* Tenant-based authentication and API keys
+
+2. BACKEND (Node.js or Python FastAPI)
+
+* API Gateway
+* Microservices:
+
+  * Identity Service
+  * Credit Scoring Service
+  * Data Aggregation Service
+  * Decision Engine
+* Database:
+
+  * PostgreSQL (structured data)
+  * Redis (caching)
+* Data models:
+
+  * Users (NRC, passport, phone)
+  * Financial accounts
+  * Loans
+  * Transactions
+  * Credit scores
+  * Tenants
+
+3. API ENDPOINTS
+
+* POST /identity/verify
+* GET /credit-score/{nrc}
+* GET /loan-exposure/{nrc}
+* GET /risk-profile/{nrc}
+* POST /consent/grant
+* GET /consent/status
+
+4. AI CREDIT SCORING
+
+* Use a simple ML model (logistic regression or gradient boosting)
+* Inputs:
+
+  * repayment history
+  * loan defaults
+  * transaction patterns
+  * mobile money usage
+* Output:
+
+  * score (0–1000)
+  * probability of default
+
+5. FRONTEND (React + Tailwind)
+   Create dashboards:
+
+A. SUPER ADMIN DASHBOARD
+
+* Manage tenants
+* Monitor APIs
+* View system analytics
+
+B. TENANT DASHBOARD
+
+* Customer lookup (NRC input)
+* Credit score view
+* Loan decision screen
+* Reports and analytics
+
+C. CONSENT PORTAL
+
+* User login
+* Approve/revoke data sharing
+
+6. SECURITY
+
+* JWT authentication
+* Role-based access control
+* Full audit logs
+* Data encryption at rest and in transit
+
+7. INTEGRATION LAYER
+
+* Mock external APIs for:
+
+  * bank data
+  * MNO mobile money data
+  * MFI loan data
+* Build connectors to simulate real integrations
+
+8. UI/UX REQUIREMENTS
+
+* Clean fintech-style UI
+* Dashboard cards for KPIs
+* Charts for risk analytics
+
+9. DEPLOYMENT
+
+* Dockerized services
+* API documentation via Swagger
+
+GOAL:
+The system should allow a financial institution to input an NRC number and instantly receive a full credit profile, including score, risk level, and total loan exposure across multiple institutions.
