@@ -11,6 +11,7 @@ interface AuthContextType {
   loginUser: (data: LoginRequest) => Promise<void>;
   logoutUser: () => void;
   apiOptions: { request: { headers: { Authorization: string } } };
+  request: (url: string, options?: RequestInit) => Promise<Response>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -69,8 +70,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const request = (url: string, options?: RequestInit): Promise<Response> => {
+    return fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        ...options?.headers,
+      },
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, isAuthenticated: !!token, isLoading, loginUser, logoutUser, apiOptions }}>
+    <AuthContext.Provider value={{ user, token, isAuthenticated: !!token, isLoading, loginUser, logoutUser, apiOptions, request }}>
       {children}
     </AuthContext.Provider>
   );
