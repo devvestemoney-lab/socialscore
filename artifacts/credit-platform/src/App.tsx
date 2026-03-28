@@ -19,7 +19,6 @@ import Billing from "@/pages/admin/billing";
 // Tenant
 import TenantDashboard from "@/pages/tenant/dashboard";
 import TenantAnalytics from "@/pages/tenant/analytics";
-import RuleConfiguration from "@/pages/tenant/rules";
 import TenantUsers from "@/pages/tenant/users";
 import PortfolioMonitoring from "@/pages/tenant/portfolio";
 
@@ -87,7 +86,6 @@ function Router() {
       <Route path="/dashboard">{() => <ProtectedRoute component={TenantDashboard} allowedRoles={TENANT} />}</Route>
       <Route path="/dashboard/analytics">{() => <ProtectedRoute component={TenantAnalytics} allowedRoles={TENANT} />}</Route>
       <Route path="/dashboard/portfolio">{() => <ProtectedRoute component={PortfolioMonitoring} allowedRoles={TENANT} />}</Route>
-      <Route path="/dashboard/rules">{() => <ProtectedRoute component={RuleConfiguration} allowedRoles={TENANT} />}</Route>
       <Route path="/dashboard/users">{() => <ProtectedRoute component={TenantUsers} allowedRoles={TENANT} />}</Route>
 
       {/* Customer Routes */}

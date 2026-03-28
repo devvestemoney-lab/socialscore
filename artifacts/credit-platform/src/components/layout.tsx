@@ -15,9 +15,7 @@ import {
   DollarSign,
   ShieldAlert,
   Database,
-  Settings2,
   BookOpen,
-  FileText,
   BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -48,7 +46,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
       { icon: LayoutDashboard, label: 'Credit Lookup',   href: '/dashboard' },
       { icon: BarChart3,       label: 'Analytics',       href: '/dashboard/analytics' },
       { icon: BookOpen,        label: 'Portfolio',       href: '/dashboard/portfolio' },
-      { icon: Settings2,       label: 'Decision Rules',  href: '/dashboard/rules' },
       { icon: Users,           label: 'Team',            href: '/dashboard/users' },
     ];
   };
