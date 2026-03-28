@@ -241,10 +241,10 @@ export default function ConsentPortal() {
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
-                    { label: 'Active Loans', value: report.loanSummary.activeLoans, color: 'text-cyan-400' },
-                    { label: 'Outstanding', value: `ZMW ${report.loanSummary.totalOutstanding.toLocaleString()}`, color: 'text-gray-900' },
-                    { label: 'On-Time Rate', value: `${report.loanSummary.onTimePaymentRate}%`, color: report.loanSummary.onTimePaymentRate >= 80 ? 'text-green-400' : 'text-yellow-400' },
-                    { label: 'Defaults', value: report.loanSummary.defaultedLoans, color: report.loanSummary.defaultedLoans > 0 ? 'text-red-400' : 'text-green-400' },
+                    { label: 'Active Loans', value: report.loanSummary?.activeLoans ?? 0, color: 'text-cyan-400' },
+                    { label: 'Outstanding', value: `ZMW ${(report.loanSummary?.totalOutstanding ?? 0).toLocaleString()}`, color: 'text-gray-900' },
+                    { label: 'On-Time Rate', value: `${report.loanSummary?.onTimePaymentRate ?? 0}%`, color: (report.loanSummary?.onTimePaymentRate ?? 0) >= 80 ? 'text-green-400' : 'text-yellow-400' },
+                    { label: 'Defaults', value: report.loanSummary?.defaultedLoans ?? 0, color: (report.loanSummary?.defaultedLoans ?? 0) > 0 ? 'text-red-400' : 'text-green-400' },
                   ].map(({ label, value, color }) => (
                     <div key={label} className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
                       <p className={cn('text-xl font-bold', color)}>{value}</p>
@@ -271,8 +271,8 @@ export default function ConsentPortal() {
                           {report.loans.map((loan: any) => (
                             <tr key={loan.id} className="border-b border-slate-200 hover:bg-slate-50">
                               <td className="py-3 px-4 text-sm text-gray-900">{loan.institution}</td>
-                              <td className="py-3 px-4 text-sm text-gray-900">ZMW {loan.principalAmount.toLocaleString()}</td>
-                              <td className="py-3 px-4 text-sm text-gray-900">ZMW {loan.outstandingBalance.toLocaleString()}</td>
+                              <td className="py-3 px-4 text-sm text-gray-900">ZMW {(loan.principalAmount ?? 0).toLocaleString()}</td>
+                              <td className="py-3 px-4 text-sm text-gray-900">ZMW {(loan.outstandingBalance ?? 0).toLocaleString()}</td>
                               <td className="py-3 px-4">
                                 <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium capitalize',
                                   loan.status === 'active' ? 'bg-cyan-500/20 text-cyan-400' :
