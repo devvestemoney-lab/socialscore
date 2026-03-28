@@ -79,6 +79,10 @@ All routes are under `/api`:
 ### Super Admin (role: super_admin)
 - `/admin` — System overview: KPIs, API query trend chart, risk distribution pie, top tenants table
 - `/admin/tenants` — Full CRUD: list, search, create modal (with admin user), edit modal, suspend/activate, delete
+- `/admin/scoring-models` — Model weight sliders, decision thresholds, A/B test config, version history
+- `/admin/data-sources` — 7 integrations (banks, MNOs, MFIs) with health scores, latency, uptime, sync status
+- `/admin/fraud` — Tenant risk profiles, query volume anomaly detection, flagged access patterns
+- `/admin/billing` — Revenue per tenant, pricing plans (Starter/Professional/Enterprise), invoice status
 - `/admin/audit-logs` — Paginated compliance audit log with search and color-coded action badges
 
 ### Tenant (roles: tenant_admin, tenant_user)
@@ -88,9 +92,12 @@ All routes are under `/api`:
   - **Loan Portfolio** — Individual loan records table with institution, principal, balance, rate, dates, status
   - **Decision Engine** — Loan decision simulator with approve/refer/decline verdict + monthly payment estimate
 - `/dashboard/analytics` — Query volume bar chart, risk distribution pie, recent queries table
+- `/dashboard/portfolio` — Loan book health, default rate trend, risk segmentation pie, early warning signals
+- `/dashboard/rules` — 3 tabs: Score Thresholds, Risk Tiers (A–E), Custom Rules (toggle/edit/delete)
+- `/dashboard/users` — CRUD for loan officers and risk managers within the tenant institution
 
 ### Customer (role: customer)
-- `/consent` — Toggle data sharing consent per category (personal, bank, mobile money, MFI, credit bureau)
+- `/consent` — 4 tabs: Consent toggles, Personal Credit Report (with score history chart), Access Logs (who queried my data), Dispute Resolution (raise & track disputes)
 
 ### Auth
 - `/login` — Login form with working demo credential quick-fill buttons

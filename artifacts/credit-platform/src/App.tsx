@@ -6,12 +6,26 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 
 // Pages
 import Login from "@/pages/login";
+
+// Super Admin
 import AdminDashboard from "@/pages/admin/dashboard";
 import TenantsList from "@/pages/admin/tenants";
 import AuditLogs from "@/pages/admin/audit-logs";
+import ScoringModels from "@/pages/admin/scoring-models";
+import DataSources from "@/pages/admin/data-sources";
+import FraudMonitor from "@/pages/admin/fraud";
+import Billing from "@/pages/admin/billing";
+
+// Tenant
 import TenantDashboard from "@/pages/tenant/dashboard";
 import TenantAnalytics from "@/pages/tenant/analytics";
+import RuleConfiguration from "@/pages/tenant/rules";
+import TenantUsers from "@/pages/tenant/users";
+import PortfolioMonitoring from "@/pages/tenant/portfolio";
+
+// Customer
 import ConsentPortal from "@/pages/customer/consent";
+
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -47,40 +61,37 @@ function ProtectedRoute({ component: Component, allowedRoles }: { component: any
   return <Component />;
 }
 
+const ADMIN = ['super_admin'];
+const TENANT = ['tenant_admin', 'tenant_user'];
+const TENANT_ADMIN = ['tenant_admin'];
+const CUSTOMER = ['customer'];
+
 function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/">
-        {() => {
-          window.location.href = '/login';
-          return null;
-        }}
+        {() => { window.location.href = '/login'; return null; }}
       </Route>
 
       {/* Super Admin Routes */}
-      <Route path="/admin">
-        {() => <ProtectedRoute component={AdminDashboard} allowedRoles={['super_admin']} />}
-      </Route>
-      <Route path="/admin/tenants">
-        {() => <ProtectedRoute component={TenantsList} allowedRoles={['super_admin']} />}
-      </Route>
-      <Route path="/admin/audit-logs">
-        {() => <ProtectedRoute component={AuditLogs} allowedRoles={['super_admin']} />}
-      </Route>
+      <Route path="/admin">{() => <ProtectedRoute component={AdminDashboard} allowedRoles={ADMIN} />}</Route>
+      <Route path="/admin/tenants">{() => <ProtectedRoute component={TenantsList} allowedRoles={ADMIN} />}</Route>
+      <Route path="/admin/scoring-models">{() => <ProtectedRoute component={ScoringModels} allowedRoles={ADMIN} />}</Route>
+      <Route path="/admin/data-sources">{() => <ProtectedRoute component={DataSources} allowedRoles={ADMIN} />}</Route>
+      <Route path="/admin/fraud">{() => <ProtectedRoute component={FraudMonitor} allowedRoles={ADMIN} />}</Route>
+      <Route path="/admin/billing">{() => <ProtectedRoute component={Billing} allowedRoles={ADMIN} />}</Route>
+      <Route path="/admin/audit-logs">{() => <ProtectedRoute component={AuditLogs} allowedRoles={ADMIN} />}</Route>
 
       {/* Tenant Routes */}
-      <Route path="/dashboard">
-        {() => <ProtectedRoute component={TenantDashboard} allowedRoles={['tenant_admin', 'tenant_user']} />}
-      </Route>
-      <Route path="/dashboard/analytics">
-        {() => <ProtectedRoute component={TenantAnalytics} allowedRoles={['tenant_admin', 'tenant_user']} />}
-      </Route>
+      <Route path="/dashboard">{() => <ProtectedRoute component={TenantDashboard} allowedRoles={TENANT} />}</Route>
+      <Route path="/dashboard/analytics">{() => <ProtectedRoute component={TenantAnalytics} allowedRoles={TENANT} />}</Route>
+      <Route path="/dashboard/portfolio">{() => <ProtectedRoute component={PortfolioMonitoring} allowedRoles={TENANT} />}</Route>
+      <Route path="/dashboard/rules">{() => <ProtectedRoute component={RuleConfiguration} allowedRoles={TENANT} />}</Route>
+      <Route path="/dashboard/users">{() => <ProtectedRoute component={TenantUsers} allowedRoles={TENANT} />}</Route>
 
       {/* Customer Routes */}
-      <Route path="/consent">
-        {() => <ProtectedRoute component={ConsentPortal} allowedRoles={['customer']} />}
-      </Route>
+      <Route path="/consent">{() => <ProtectedRoute component={ConsentPortal} allowedRoles={CUSTOMER} />}</Route>
 
       <Route component={NotFound} />
     </Switch>

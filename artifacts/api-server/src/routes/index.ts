@@ -10,6 +10,9 @@ import tenantsRouter from "./tenants.js";
 import analyticsRouter from "./analytics.js";
 import integrationsRouter from "./integrations.js";
 import auditRouter from "./audit.js";
+import adminExtendedRouter from "./admin-extended.js";
+import tenantExtendedRouter from "./tenant-extended.js";
+import customerPortalRouter from "./customer-portal.js";
 
 const router: IRouter = Router();
 
@@ -24,5 +27,8 @@ router.use("/tenants", tenantsRouter);
 router.use("/analytics", analyticsRouter);
 router.use("/integrations", integrationsRouter);
 router.use("/audit-logs", auditRouter);
+router.use("/admin", adminExtendedRouter);
+router.use("/tenant", tenantExtendedRouter);
+router.use("/customer", customerPortalRouter);
 
 export default router;

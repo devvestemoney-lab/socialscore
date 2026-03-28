@@ -1,0 +1,261 @@
+1. TENANT TYPES (Who uses your system)
+1. Super Admin (Platform Owner)
+
+👉 You control everything
+
+2. Financial Institutions (Banks, MFIs, Fintechs)
+
+👉 They consume credit insights + make decisions
+
+3. Data Providers
+
+👉 They push data into your system
+
+4. End Users (Borrowers)
+
+👉 Consent + transparency layer
+
+🏢 2. SUPER ADMIN (Platform Owner) — FULL FEATURE SET
+
+This is your control tower.
+
+🧑‍💼 A. Tenant Management
+Create / onboard tenants
+Assign:
+API keys
+Access levels
+Activate / deactivate tenants
+Set pricing plans per tenant
+Sub-features:
+Tenant profile (company info, contacts)
+Tenant type (Bank, MFI, MNO, Fintech)
+SLA configuration
+🔑 B. API & Access Management
+API key generation
+Rate limiting per tenant
+Endpoint access control
+Sub-features:
+Per-endpoint permissions
+API usage throttling
+OAuth / JWT config
+📊 C. System Monitoring & Analytics
+Total API calls
+System uptime
+Latency per service
+Sub-features:
+Real-time dashboards
+Alerts (downtime, failures)
+Traffic by tenant
+🧠 D. Scoring Model Management
+Create / update scoring models
+Version control of models
+Sub-features:
+Weight configuration:
+repayment history = 40%
+telco behavior = 20%
+Model A/B testing
+Model performance tracking
+🔗 E. Data Source Management
+Manage integrations:
+Banks
+MNOs
+MFIs
+Sub-features:
+API health monitoring
+Data sync schedules
+Data mapping (normalization rules)
+🔐 F. Compliance & Audit
+Full audit logs:
+who queried what
+when
+Regulatory reporting
+Sub-features:
+Consent logs
+Data access logs
+Export reports for regulators like Bank of Zambia
+🚨 G. Fraud & Abuse Monitoring
+Detect:
+excessive lookups
+suspicious access patterns
+Sub-features:
+Risk flags on tenants
+IP monitoring
+Geo anomalies
+💰 H. Billing & Revenue
+Track API usage per tenant
+Generate invoices
+Sub-features:
+Pay-per-call pricing
+Subscription plans
+Payment tracking
+🏦 3. TENANT DASHBOARD (BANK / MFI / FINTECH)
+
+This is where the real action happens.
+
+🏠 A. Dashboard Overview
+Daily loan requests
+Approval vs rejection rates
+Average credit score
+Sub-features:
+Risk distribution chart
+Portfolio exposure summary
+🔍 B. Customer Search / Credit Inquiry
+
+👉 CORE FEATURE
+
+Input:
+NRC / Passport / Phone
+Output:
+Credit score (0–1000)
+Risk grade (A–E)
+Identity match confidence
+📊 C. Credit Profile View
+1. Identity Section
+Name
+NRC
+Linked phone numbers
+2. Credit Summary
+Total active loans
+Total outstanding balance
+Number of institutions involved
+3. Repayment Behavior
+On-time payments %
+Late payments
+Defaults
+4. Loan Exposure Breakdown
+Per institution:
+Bank A: $X
+MFI B: $Y
+5. Behavioral Insights
+Mobile money usage
+Estimated income
+Spending patterns
+⚖️ D. Loan Decision Engine
+Features:
+Auto decision:
+Approve / Reject / Review
+Recommended:
+Loan amount
+Tenure
+Interest band
+Sub-features:
+Custom rules:
+“Reject if score < 400”
+“Max loan = 30% of income”
+🛠️ E. Rule Configuration (Per Tenant)
+
+Each bank can customize:
+
+Risk thresholds
+Score cutoffs
+Loan limits
+Example:
+Tier A → high limit
+Tier D → reject
+📈 F. Portfolio Monitoring
+Track:
+Loan book health
+Default rates
+Sub-features:
+Risk segmentation
+Early warning signals
+📑 G. Reports & Analytics
+Daily / monthly reports
+Credit distribution
+Default trends
+🔌 H. API Usage Dashboard
+API calls made
+Errors
+Latency
+👥 I. User Management (Within Tenant)
+Create users:
+Loan officers
+Risk managers
+Roles:
+Viewer
+Decision maker
+Admin
+📡 4. DATA PROVIDER PORTAL (MNOs, Banks Contributing Data)
+
+This ensures data flows INTO your system.
+
+🔄 A. Data Submission Dashboard
+Upload / stream data:
+Loans
+Transactions
+Repayments
+📊 B. Data Quality Monitoring
+Missing fields
+Data errors
+🔗 C. API Integration Tools
+API credentials
+Webhook configs
+📜 D. Contribution Tracking
+How much data they provide
+Incentive scoring (for reciprocity model)
+👤 5. END USER (BORROWER) PORTAL
+
+This is critical for trust + compliance.
+
+🔐 A. Consent Management
+Grant access to:
+Bank A
+MFI B
+📜 B. Access Logs
+“Who checked my data?”
+📊 C. Personal Credit Report
+View:
+Score
+Loans
+Repayment history
+❌ D. Dispute Resolution
+Raise disputes:
+Incorrect loan
+Wrong default
+🔁 6. CROSS-CUTTING FEATURES (Across ALL tenants)
+🔍 Identity Resolution Engine
+Deduplicate users
+Match:
+NRC
+Phone
+Name variations
+⚡ Real-Time Processing
+Sub-second response for scoring
+🔐 Security
+Encryption
+Role-based access
+Audit trails
+🧠 AI / ML Layer
+Default prediction
+Behavioral scoring
+📦 Multi-Tenant Isolation
+Separate:
+Data
+Config
+Models
+🧩 7. BONUS ADVANCED FEATURES (Future Differentiators)
+📱 Alternative Data Scoring
+Airtime purchases
+Smartphone usage
+🤝 Marketplace
+Lenders compete to offer loans
+📉 Early Warning System
+Detect users likely to default
+🌍 Cross-Border Scoring
+Expand beyond Zambia
+🔥 KEY TAKEAWAY
+
+What you’re building is not just:
+
+“a credit score system”
+
+It’s actually:
+
+👉 A Financial Data Exchange + Decisioning Platform
+
+With:
+
+API infrastructure
+AI scoring
+Multi-tenant SaaS
+Regulatory-grade auditability
