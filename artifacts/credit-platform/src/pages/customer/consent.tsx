@@ -135,16 +135,16 @@ export default function ConsentPortal() {
             <ShieldCheck className="w-5 h-5 text-cyan-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-display font-bold text-white">My ZamCredit Portal</h1>
+            <h1 className="text-2xl font-display font-bold text-gray-900">My ZamCredit Portal</h1>
             <p className="text-sm text-muted-foreground">Manage your data consent, credit report, and dispute records</p>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1 bg-white/5 rounded-xl flex-wrap w-fit">
+        <div className="flex gap-1 p-1 bg-slate-50 rounded-xl flex-wrap w-fit">
           {tabs.map(t => (
             <button key={t.id} onClick={() => setTab(t.id as any)}
-              className={cn('flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all', tab === t.id ? 'bg-white/15 text-white' : 'text-muted-foreground hover:text-white')}>
+              className={cn('flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all', tab === t.id ? 'bg-slate-100 text-gray-900' : 'text-muted-foreground hover:text-gray-900')}>
               <t.icon className="w-3.5 h-3.5" />
               {t.label}
             </button>
@@ -156,7 +156,7 @@ export default function ConsentPortal() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-between">
               <div>
-                <p className="font-medium text-white">Data Sharing Consent</p>
+                <p className="font-medium text-gray-900">Data Sharing Consent</p>
                 <p className="text-sm text-muted-foreground">{activeCount} of {DATA_TYPES.length} categories shared</p>
               </div>
               <div className="text-right">
@@ -171,14 +171,14 @@ export default function ConsentPortal() {
                 const isSaving = saving === type;
                 return (
                   <motion.div key={type} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                    className={cn('p-5 rounded-xl border transition-all', active ? 'bg-white/7 border-white/15' : 'bg-white/3 border-white/8')}>
+                    className={cn('p-5 rounded-xl border transition-all', active ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-200')}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', active ? bg : 'bg-white/5')}>
+                        <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', active ? bg : 'bg-slate-50')}>
                           <Icon className={cn('w-5 h-5', active ? color : 'text-muted-foreground')} />
                         </div>
                         <div>
-                          <p className={cn('font-medium', active ? 'text-white' : 'text-muted-foreground')}>{label}</p>
+                          <p className={cn('font-medium', active ? 'text-gray-900' : 'text-muted-foreground')}>{label}</p>
                           <p className="text-sm text-muted-foreground/80">{description}</p>
                         </div>
                       </div>
@@ -191,7 +191,7 @@ export default function ConsentPortal() {
                 );
               })}
             </div>
-            <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-sm text-muted-foreground">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-muted-foreground">
               Governed by the Bank of Zambia Data Protection Framework. Changes take effect within 24 hours.
             </div>
           </motion.div>
@@ -212,13 +212,13 @@ export default function ConsentPortal() {
                       <p className="text-sm text-muted-foreground mb-1">Your Credit Score</p>
                       {report.creditScore.score ? (
                         <>
-                          <p className="text-5xl font-display font-bold text-white">{report.creditScore.score}</p>
-                          <p className={cn('text-lg font-semibold mt-1', ratingColor[report.creditScore.rating] || 'text-white')}>{report.creditScore.rating}</p>
+                          <p className="text-5xl font-display font-bold text-gray-900">{report.creditScore.score}</p>
+                          <p className={cn('text-lg font-semibold mt-1', ratingColor[report.creditScore.rating] || 'text-gray-900')}>{report.creditScore.rating}</p>
                         </>
                       ) : <p className="text-xl text-muted-foreground">No score yet — a lender must query your profile first</p>}
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-white font-medium">{report.customer.firstName} {report.customer.lastName}</p>
+                      <p className="text-sm text-gray-900 font-medium">{report.customer.firstName} {report.customer.lastName}</p>
                       <p className="text-xs text-muted-foreground font-mono">{report.customer.nrc}</p>
                       {report.creditScore.lastUpdated && (
                         <p className="text-xs text-muted-foreground mt-1">Updated {new Date(report.creditScore.lastUpdated).toLocaleDateString()}</p>
@@ -242,11 +242,11 @@ export default function ConsentPortal() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
                     { label: 'Active Loans', value: report.loanSummary.activeLoans, color: 'text-cyan-400' },
-                    { label: 'Outstanding', value: `ZMW ${report.loanSummary.totalOutstanding.toLocaleString()}`, color: 'text-white' },
+                    { label: 'Outstanding', value: `ZMW ${report.loanSummary.totalOutstanding.toLocaleString()}`, color: 'text-gray-900' },
                     { label: 'On-Time Rate', value: `${report.loanSummary.onTimePaymentRate}%`, color: report.loanSummary.onTimePaymentRate >= 80 ? 'text-green-400' : 'text-yellow-400' },
                     { label: 'Defaults', value: report.loanSummary.defaultedLoans, color: report.loanSummary.defaultedLoans > 0 ? 'text-red-400' : 'text-green-400' },
                   ].map(({ label, value, color }) => (
-                    <div key={label} className="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
+                    <div key={label} className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
                       <p className={cn('text-xl font-bold', color)}>{value}</p>
                       <p className="text-xs text-muted-foreground mt-1">{label}</p>
                     </div>
@@ -254,14 +254,14 @@ export default function ConsentPortal() {
                 </div>
 
                 {report.loans.length > 0 && (
-                  <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
-                    <div className="p-4 border-b border-white/10">
-                      <h3 className="font-semibold text-white">All Loan Records</h3>
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 overflow-hidden">
+                    <div className="p-4 border-b border-slate-200">
+                      <h3 className="font-semibold text-gray-900">All Loan Records</h3>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
-                          <tr className="border-b border-white/5">
+                          <tr className="border-b border-slate-200">
                             {['Institution', 'Principal', 'Outstanding', 'Status', 'Missed'].map(h => (
                               <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
                             ))}
@@ -269,10 +269,10 @@ export default function ConsentPortal() {
                         </thead>
                         <tbody>
                           {report.loans.map((loan: any) => (
-                            <tr key={loan.id} className="border-b border-white/5 hover:bg-white/5">
-                              <td className="py-3 px-4 text-sm text-white">{loan.institution}</td>
-                              <td className="py-3 px-4 text-sm text-white">ZMW {loan.principalAmount.toLocaleString()}</td>
-                              <td className="py-3 px-4 text-sm text-white">ZMW {loan.outstandingBalance.toLocaleString()}</td>
+                            <tr key={loan.id} className="border-b border-slate-200 hover:bg-slate-50">
+                              <td className="py-3 px-4 text-sm text-gray-900">{loan.institution}</td>
+                              <td className="py-3 px-4 text-sm text-gray-900">ZMW {loan.principalAmount.toLocaleString()}</td>
+                              <td className="py-3 px-4 text-sm text-gray-900">ZMW {loan.outstandingBalance.toLocaleString()}</td>
                               <td className="py-3 px-4">
                                 <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium capitalize',
                                   loan.status === 'active' ? 'bg-cyan-500/20 text-cyan-400' :
@@ -293,7 +293,7 @@ export default function ConsentPortal() {
                 )}
               </>
             ) : (
-              <div className="p-8 text-center rounded-xl bg-white/5 border border-white/10">
+              <div className="p-8 text-center rounded-xl bg-slate-50 border border-slate-200">
                 <p className="text-muted-foreground">Credit report not available</p>
               </div>
             )}
@@ -311,13 +311,13 @@ export default function ConsentPortal() {
               <>
                 <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
                   <p className="text-sm text-blue-300">
-                    Your credit data has been accessed <strong className="text-white">{accessLogs.totalAccesses}</strong> times.
+                    Your credit data has been accessed <strong className="text-gray-900">{accessLogs.totalAccesses}</strong> times.
                     Only consented institutions may access your data.
                   </p>
                 </div>
-                <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
-                  <div className="p-4 border-b border-white/10">
-                    <h3 className="font-semibold text-white">Access History ({accessLogs.totalAccesses} total)</h3>
+                <div className="rounded-xl bg-slate-50 border border-slate-200 overflow-hidden">
+                  <div className="p-4 border-b border-slate-200">
+                    <h3 className="font-semibold text-gray-900">Access History ({accessLogs.totalAccesses} total)</h3>
                   </div>
                   {accessLogs.accessLogs.length === 0 ? (
                     <div className="p-8 text-center">
@@ -325,15 +325,15 @@ export default function ConsentPortal() {
                       <p className="text-muted-foreground text-sm">No one has accessed your data yet</p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-white/5">
+                    <div className="divide-y divide-slate-100">
                       {accessLogs.accessLogs.map((log: any) => (
-                        <div key={log.id} className="flex items-center justify-between p-4 hover:bg-white/5 transition-colors">
+                        <div key={log.id} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
                               <Building className="w-4 h-4 text-muted-foreground" />
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-white">{log.tenantName}</p>
+                              <p className="text-sm font-medium text-gray-900">{log.tenantName}</p>
                               <p className="text-xs text-muted-foreground">{log.dataAccessed}</p>
                             </div>
                           </div>
@@ -351,8 +351,8 @@ export default function ConsentPortal() {
         {/* ──── DISPUTES ──── */}
         {tab === 'disputes' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            <div className="p-5 rounded-xl bg-white/5 border border-white/10 space-y-4">
-              <h3 className="font-semibold text-white flex items-center gap-2">
+            <div className="p-5 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
                 <MessageSquare className="w-4 h-4 text-yellow-400" />
                 Raise a Dispute
               </h3>
@@ -360,7 +360,7 @@ export default function ConsentPortal() {
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-1.5">Dispute Type *</label>
                   <select value={disputeForm.type} onChange={e => setDisputeForm(p => ({ ...p, type: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/15 text-white focus:outline-none focus:border-cyan-500 text-sm">
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-gray-900 focus:outline-none focus:border-cyan-500 text-sm">
                     <option value="" disabled>Select type…</option>
                     {DISPUTE_TYPES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
                   </select>
@@ -369,7 +369,7 @@ export default function ConsentPortal() {
                   <label className="block text-sm font-medium text-muted-foreground mb-1.5">Affected Institution *</label>
                   <input type="text" value={disputeForm.affectedInstitution} placeholder="e.g. Zanaco Bank"
                     onChange={e => setDisputeForm(p => ({ ...p, affectedInstitution: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/15 text-white placeholder:text-muted-foreground/50 focus:outline-none focus:border-cyan-500 text-sm"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-gray-900 placeholder:text-muted-foreground/50 focus:outline-none focus:border-cyan-500 text-sm"
                   />
                 </div>
               </div>
@@ -377,7 +377,7 @@ export default function ConsentPortal() {
                 <label className="block text-sm font-medium text-muted-foreground mb-1.5">Description *</label>
                 <textarea value={disputeForm.description} rows={3} placeholder="Describe the issue in detail…"
                   onChange={e => setDisputeForm(p => ({ ...p, description: e.target.value }))}
-                  className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/15 text-white placeholder:text-muted-foreground/50 focus:outline-none focus:border-cyan-500 text-sm resize-none"
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-gray-900 placeholder:text-muted-foreground/50 focus:outline-none focus:border-cyan-500 text-sm resize-none"
                 />
               </div>
               <button onClick={submitDispute} disabled={submittingDispute}
@@ -392,9 +392,9 @@ export default function ConsentPortal() {
                 <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
               </div>
             ) : disputes.length === 0 ? (
-              <div className="p-8 text-center rounded-xl bg-white/5 border border-white/10">
+              <div className="p-8 text-center rounded-xl bg-slate-50 border border-slate-200">
                 <CheckCircle2 className="w-8 h-8 text-green-400 mx-auto mb-2" />
-                <p className="text-white font-medium">No disputes raised</p>
+                <p className="text-gray-900 font-medium">No disputes raised</p>
                 <p className="text-sm text-muted-foreground mt-1">If any information is incorrect, raise a dispute above</p>
               </div>
             ) : (
@@ -409,10 +409,10 @@ export default function ConsentPortal() {
                   const sc = statusIcons[d.status] || statusIcons.open;
                   const StatusIcon = sc.icon;
                   return (
-                    <div key={d.id} className="p-5 rounded-xl bg-white/5 border border-white/10">
+                    <div key={d.id} className="p-5 rounded-xl bg-slate-50 border border-slate-200">
                       <div className="flex items-start justify-between mb-2">
                         <div>
-                          <p className="font-medium text-white">{DISPUTE_TYPES.find(t => t.value === d.type)?.label || d.type}</p>
+                          <p className="font-medium text-gray-900">{DISPUTE_TYPES.find(t => t.value === d.type)?.label || d.type}</p>
                           <p className="text-sm text-muted-foreground">{d.affectedInstitution}</p>
                         </div>
                         <div className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium', sc.bg, sc.color)}>

@@ -67,7 +67,7 @@ export default function ScoringModels() {
                 <Brain className="w-5 h-5 text-purple-400" />
               </div>
               <div>
-                <h1 className="text-2xl font-display font-bold text-white">Scoring Model Management</h1>
+                <h1 className="text-2xl font-display font-bold text-gray-900">Scoring Model Management</h1>
                 <p className="text-sm text-muted-foreground">Configure AI scoring weights, thresholds, and A/B tests</p>
               </div>
             </div>
@@ -81,10 +81,10 @@ export default function ScoringModels() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1 bg-white/5 rounded-xl w-fit">
+        <div className="flex gap-1 p-1 bg-slate-50 rounded-xl w-fit">
           {tabs.map(t => (
             <button key={t.id} onClick={() => setTab(t.id as any)}
-              className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all', tab === t.id ? 'bg-white/15 text-white' : 'text-muted-foreground hover:text-white')}>
+              className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all', tab === t.id ? 'bg-slate-100 text-gray-900' : 'text-muted-foreground hover:text-gray-900')}>
               {t.label}
             </button>
           ))}
@@ -99,7 +99,7 @@ export default function ScoringModels() {
 
             {/* Total indicator */}
             <div className={cn('flex items-center justify-between p-4 rounded-xl border', isValid ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20')}>
-              <span className="text-sm font-medium text-white">Total Weight</span>
+              <span className="text-sm font-medium text-gray-900">Total Weight</span>
               <span className={cn('text-xl font-bold', isValid ? 'text-green-400' : 'text-red-400')}>{total}%</span>
             </div>
 
@@ -109,15 +109,15 @@ export default function ScoringModels() {
                 const meta = COMPONENT_META[key];
                 if (!meta) return null;
                 return (
-                  <div key={key} className="p-5 rounded-xl bg-white/5 border border-white/10">
+                  <div key={key} className="p-5 rounded-xl bg-slate-50 border border-slate-200">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <p className="font-medium text-white">{meta.label}</p>
+                        <p className="font-medium text-gray-900">{meta.label}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">{meta.description}</p>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-sm text-muted-foreground">Max {meta.maxPts} pts</span>
-                        <div className="w-16 h-10 rounded-lg bg-white/10 flex items-center justify-center">
+                        <div className="w-16 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
                           <span className="text-lg font-bold" style={{ color: meta.color }}>{value}%</span>
                         </div>
                       </div>
@@ -128,7 +128,7 @@ export default function ScoringModels() {
                       style={{ accentColor: meta.color }}
                     />
                     <div className="mt-2">
-                      <div className="h-1.5 rounded-full bg-white/10">
+                      <div className="h-1.5 rounded-full bg-slate-100">
                         <div className="h-full rounded-full transition-all" style={{ width: `${(value / 60) * 100}%`, backgroundColor: meta.color }} />
                       </div>
                     </div>
@@ -144,7 +144,7 @@ export default function ScoringModels() {
                 {saving ? 'Saving…' : 'Save Configuration'}
               </button>
               <button onClick={resetToDefault}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium transition-colors">
+                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-100 text-gray-900 font-medium transition-colors">
                 <RotateCcw className="w-4 h-4" />
                 Reset to Default
               </button>
@@ -160,25 +160,25 @@ export default function ScoringModels() {
                 { key: 'minApprovalScore', label: 'Manual Review Score', description: 'Scores between this and auto-approve go to manual review', color: '#f59e0b' },
                 { key: 'autoDeclineScore', label: 'Auto-Decline Score', description: 'Scores below this threshold are automatically declined', color: '#ef4444' },
               ].map(({ key, label, description, color }) => (
-                <div key={key} className="p-5 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                <div key={key} className="p-5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
                   <div>
-                    <p className="font-medium text-white">{label}</p>
+                    <p className="font-medium text-gray-900">{label}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <input type="number" min={0} max={1000} value={thresholds[key] || 0}
                       onChange={e => setThresholds((prev: any) => ({ ...prev, [key]: Number(e.target.value) }))}
-                      className="w-24 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white text-center font-bold text-lg focus:outline-none focus:border-cyan-500"
+                      className="w-24 px-3 py-2 rounded-lg bg-slate-100 border border-slate-200 text-gray-900 text-center font-bold text-lg focus:outline-none focus:border-cyan-500"
                     />
-                    <div className="flex-1 h-2 rounded-full bg-white/10">
+                    <div className="flex-1 h-2 rounded-full bg-slate-100">
                       <div className="h-full rounded-full transition-all" style={{ width: `${((thresholds[key] || 0) / 1000) * 100}%`, backgroundColor: color }} />
                     </div>
                   </div>
                 </div>
               ))}
-              <div className="p-5 rounded-xl bg-white/5 border border-white/10 space-y-3">
+              <div className="p-5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
                 <div>
-                  <p className="font-medium text-white">Max Loan-to-Income Ratio</p>
+                  <p className="font-medium text-gray-900">Max Loan-to-Income Ratio</p>
                   <p className="text-xs text-muted-foreground mt-0.5">Maximum ratio of loan amount to estimated annual income</p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -200,13 +200,13 @@ export default function ScoringModels() {
 
         {tab === 'abtest' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            <div className="p-6 rounded-xl bg-white/5 border border-white/10">
+            <div className="p-6 rounded-xl bg-slate-50 border border-slate-200">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="font-semibold text-white">A/B Test Configuration</h3>
+                  <h3 className="font-semibold text-gray-900">A/B Test Configuration</h3>
                   <p className="text-sm text-muted-foreground">Split traffic between model versions to measure performance</p>
                 </div>
-                <div className={cn('px-3 py-1 rounded-full text-xs font-medium', config?.abTest?.enabled ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-muted-foreground')}>
+                <div className={cn('px-3 py-1 rounded-full text-xs font-medium', config?.abTest?.enabled ? 'bg-green-500/20 text-green-400' : 'bg-slate-100 text-muted-foreground')}>
                   {config?.abTest?.enabled ? 'Active' : 'Disabled'}
                 </div>
               </div>
@@ -215,20 +215,20 @@ export default function ScoringModels() {
                   { key: 'variantA', label: 'Variant A (Control)', color: '#06b6d4' },
                   { key: 'variantB', label: 'Variant B (Challenger)', color: '#8b5cf6' },
                 ].map(({ key, label, color }) => (
-                  <div key={key} className="p-4 rounded-lg bg-white/5 border border-white/10">
+                  <div key={key} className="p-4 rounded-lg bg-slate-50 border border-slate-200">
                     <p className="text-sm font-medium mb-1" style={{ color }}>{label}</p>
-                    <p className="text-white font-semibold mb-3">{config?.abTest?.[key]?.name || key}</p>
+                    <p className="text-gray-900 font-semibold mb-3">{config?.abTest?.[key]?.name || key}</p>
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl font-bold text-white">{config?.abTest?.[key]?.trafficPct || 50}%</span>
+                      <span className="text-2xl font-bold text-gray-900">{config?.abTest?.[key]?.trafficPct || 50}%</span>
                       <span className="text-sm text-muted-foreground">of traffic</span>
                     </div>
-                    <div className="mt-2 h-2 rounded-full bg-white/10">
+                    <div className="mt-2 h-2 rounded-full bg-slate-100">
                       <div className="h-full rounded-full" style={{ width: `${config?.abTest?.[key]?.trafficPct || 50}%`, backgroundColor: color }} />
                     </div>
                   </div>
                 ))}
               </div>
-              <p className="text-sm text-muted-foreground mt-4 p-3 rounded-lg bg-white/5">
+              <p className="text-sm text-muted-foreground mt-4 p-3 rounded-lg bg-slate-50">
                 A/B testing distributes credit score queries across model versions to compare accuracy, default prediction rate, and approval rates.
               </p>
             </div>
@@ -238,22 +238,22 @@ export default function ScoringModels() {
         {tab === 'history' && config && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
             {config.modelHistory.map((v: any, i: number) => (
-              <div key={v.version} className={cn('p-5 rounded-xl border transition-all', i === config.modelHistory.length - 1 ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-white/5 border-white/10')}>
+              <div key={v.version} className={cn('p-5 rounded-xl border transition-all', i === config.modelHistory.length - 1 ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-slate-50 border-slate-200')}>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={cn('w-8 h-8 rounded-full flex items-center justify-center', i === config.modelHistory.length - 1 ? 'bg-cyan-500/20' : 'bg-white/10')}>
+                    <div className={cn('w-8 h-8 rounded-full flex items-center justify-center', i === config.modelHistory.length - 1 ? 'bg-cyan-500/20' : 'bg-slate-100')}>
                       {i === config.modelHistory.length - 1 ? <CheckCircle2 className="w-4 h-4 text-cyan-400" /> : <History className="w-4 h-4 text-muted-foreground" />}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-white">{v.version}</span>
+                        <span className="font-semibold text-gray-900">{v.version}</span>
                         {i === config.modelHistory.length - 1 && <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 text-xs">Current</span>}
                       </div>
                       <p className="text-sm text-muted-foreground">{v.notes}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-white font-medium">{Math.round(v.accuracy * 100)}% accuracy</p>
+                    <p className="text-sm text-gray-900 font-medium">{Math.round(v.accuracy * 100)}% accuracy</p>
                     <p className="text-xs text-muted-foreground">{new Date(v.deployedAt).toLocaleDateString()}</p>
                   </div>
                 </div>

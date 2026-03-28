@@ -15,11 +15,11 @@ export default function AdminDashboard() {
     return (
       <Layout>
         <div className="animate-pulse space-y-8">
-          <div className="h-10 bg-white/5 rounded-lg w-64"></div>
+          <div className="h-10 bg-slate-50 rounded-lg w-64"></div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {[1,2,3,4].map(i => <div key={i} className="h-32 bg-white/5 rounded-2xl"></div>)}
+            {[1,2,3,4].map(i => <div key={i} className="h-32 bg-slate-50 rounded-2xl"></div>)}
           </div>
-          <div className="h-96 bg-white/5 rounded-2xl"></div>
+          <div className="h-96 bg-slate-50 rounded-2xl"></div>
         </div>
       </Layout>
     );
@@ -47,10 +47,10 @@ export default function AdminDashboard() {
     <Layout>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-display font-bold text-white mb-2">System Overview</h1>
+          <h1 className="text-3xl font-display font-bold text-gray-900 mb-2">System Overview</h1>
           <p className="text-muted-foreground">Monitor platform usage and aggregate risk metrics.</p>
         </div>
-        <Link href="/admin/tenants" className="px-6 py-2.5 rounded-xl font-medium bg-white/5 text-white hover:bg-white/10 border border-white/10 transition-colors inline-flex items-center gap-2 w-fit">
+        <Link href="/admin/tenants" className="px-6 py-2.5 rounded-xl font-medium bg-slate-50 text-gray-900 hover:bg-slate-100 border border-slate-200 transition-colors inline-flex items-center gap-2 w-fit">
           Manage Tenants <ArrowUpRight className="w-4 h-4" />
         </Link>
       </div>
@@ -60,19 +60,19 @@ export default function AdminDashboard() {
           <div key={i} className="glass-panel p-6 rounded-2xl relative overflow-hidden group">
             <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full blur-2xl opacity-20 ${kpi.bg} group-hover:opacity-40 transition-opacity`} />
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-white/60">{kpi.label}</p>
+              <p className="text-sm font-medium text-gray-500">{kpi.label}</p>
               <div className={`p-2 rounded-lg ${kpi.bg}`}>
                 <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
               </div>
             </div>
-            <p className="text-3xl font-display font-bold text-white">{kpi.value}</p>
+            <p className="text-3xl font-display font-bold text-gray-900">{kpi.value}</p>
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="lg:col-span-2 glass-panel p-6 rounded-2xl">
-          <h3 className="text-lg font-bold text-white mb-6">API Queries Trend (30 Days)</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-6">API Queries Trend (30 Days)</h3>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data.queryTrend}>
@@ -90,7 +90,7 @@ export default function AdminDashboard() {
         </div>
 
         <div className="glass-panel p-6 rounded-2xl flex flex-col">
-          <h3 className="text-lg font-bold text-white mb-6">Risk Distribution</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-6">Risk Distribution</h3>
           <div className="flex-1 min-h-[250px] w-full relative">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -115,12 +115,12 @@ export default function AdminDashboard() {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span className="text-xl font-bold text-white">{data.totalCustomers}</span>
+              <span className="text-xl font-bold text-gray-900">{data.totalCustomers}</span>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 mt-4">
             {pieData.map(item => (
-              <div key={item.name} className="flex items-center gap-2 text-sm text-white/70">
+              <div key={item.name} className="flex items-center gap-2 text-sm text-gray-600">
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
                 <span className="truncate">{item.name}</span>
               </div>
@@ -130,28 +130,28 @@ export default function AdminDashboard() {
       </div>
 
       <div className="glass-panel rounded-2xl overflow-hidden">
-        <div className="p-6 border-b border-white/5">
-          <h3 className="text-lg font-bold text-white">Top Tenants by Usage</h3>
+        <div className="p-6 border-b border-slate-200">
+          <h3 className="text-lg font-bold text-gray-900">Top Tenants by Usage</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-white/5 border-b border-white/5 text-sm text-white/50 uppercase tracking-wider">
+              <tr className="bg-slate-50 border-b border-slate-200 text-sm text-gray-500 uppercase tracking-wider">
                 <th className="p-4 font-semibold">Tenant Name</th>
                 <th className="p-4 font-semibold">Type</th>
                 <th className="p-4 font-semibold text-right">Queries (MTD)</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-slate-100">
               {data.topTenants.map((tenant) => (
-                <tr key={tenant.tenantId} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="p-4 text-white font-medium">{tenant.tenantName}</td>
+                <tr key={tenant.tenantId} className="hover:bg-slate-50 transition-colors">
+                  <td className="p-4 text-gray-900 font-medium">{tenant.tenantName}</td>
                   <td className="p-4">
                     <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-wider">
                       {tenant.type}
                     </span>
                   </td>
-                  <td className="p-4 text-right text-white/80 font-mono">{tenant.queries.toLocaleString()}</td>
+                  <td className="p-4 text-right text-gray-700 font-mono">{tenant.queries.toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>

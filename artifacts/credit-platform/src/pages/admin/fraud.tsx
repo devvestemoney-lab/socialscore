@@ -46,12 +46,12 @@ export default function FraudMonitor() {
               <ShieldAlert className="w-5 h-5 text-red-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-display font-bold text-white">Fraud & Abuse Monitoring</h1>
+              <h1 className="text-2xl font-display font-bold text-gray-900">Fraud & Abuse Monitoring</h1>
               <p className="text-sm text-muted-foreground">Detect excessive lookups, suspicious patterns, and anomalous access</p>
             </div>
           </div>
           <button onClick={refresh} disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition-colors">
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-100 text-gray-900 text-sm font-medium transition-colors">
             <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin')} />
             Refresh
           </button>
@@ -76,11 +76,11 @@ export default function FraudMonitor() {
             { label: 'Total Query Volume', value: summary.totalQueryVolume, color: 'text-cyan-400', bg: 'bg-cyan-500/10', icon: Activity },
           ].map(({ label, value, color, bg, icon: Icon }) => (
             <motion.div key={label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-              className="p-5 rounded-xl bg-white/5 border border-white/10">
+              className="p-5 rounded-xl bg-slate-50 border border-slate-200">
               <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center mb-3', bg)}>
                 <Icon className={cn('w-5 h-5', color)} />
               </div>
-              <p className="text-2xl font-bold text-white">{value}</p>
+              <p className="text-2xl font-bold text-gray-900">{value}</p>
               <p className="text-sm text-muted-foreground mt-1">{label}</p>
             </motion.div>
           ))}
@@ -92,7 +92,7 @@ export default function FraudMonitor() {
             <button key={f} onClick={() => setFilter(f)}
               className={cn('px-4 py-1.5 rounded-full text-sm font-medium capitalize transition-all border', filter === f
                 ? f === 'all' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' : `${riskColors[f]?.bg} ${riskColors[f]?.text} ${riskColors[f]?.border}`
-                : 'bg-white/5 text-muted-foreground border-white/10 hover:bg-white/10'
+                : 'bg-slate-50 text-muted-foreground border-slate-200 hover:bg-slate-100'
               )}>
               {f}
             </button>
@@ -105,12 +105,12 @@ export default function FraudMonitor() {
             const colors = riskColors[tenant.riskLevel];
             return (
               <motion.div key={tenant.tenantId} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                className={cn('p-5 rounded-xl border transition-all', tenant.riskLevel !== 'normal' ? `${colors.bg} ${colors.border}` : 'bg-white/5 border-white/10')}>
+                className={cn('p-5 rounded-xl border transition-all', tenant.riskLevel !== 'normal' ? `${colors.bg} ${colors.border}` : 'bg-slate-50 border-slate-200')}>
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className={cn('w-2 h-2 rounded-full mt-1', colors.dot, tenant.riskLevel !== 'normal' && 'animate-pulse')} />
                     <div>
-                      <p className="font-semibold text-white">{tenant.tenantName}</p>
+                      <p className="font-semibold text-gray-900">{tenant.tenantName}</p>
                       <p className="text-xs text-muted-foreground capitalize">{tenant.tenantType}</p>
                     </div>
                   </div>
@@ -120,16 +120,16 @@ export default function FraudMonitor() {
                 </div>
 
                 <div className="grid grid-cols-3 gap-3 mb-4">
-                  <div className="text-center p-2 rounded-lg bg-white/5">
-                    <p className="text-lg font-bold text-white">{tenant.queriesLastHour}</p>
+                  <div className="text-center p-2 rounded-lg bg-slate-50">
+                    <p className="text-lg font-bold text-gray-900">{tenant.queriesLastHour}</p>
                     <p className="text-xs text-muted-foreground">Last hour</p>
                   </div>
-                  <div className="text-center p-2 rounded-lg bg-white/5">
-                    <p className="text-lg font-bold text-white">{tenant.queriesLast24h}</p>
+                  <div className="text-center p-2 rounded-lg bg-slate-50">
+                    <p className="text-lg font-bold text-gray-900">{tenant.queriesLast24h}</p>
                     <p className="text-xs text-muted-foreground">Last 24h</p>
                   </div>
-                  <div className="text-center p-2 rounded-lg bg-white/5">
-                    <p className="text-lg font-bold text-white">{tenant.repeatQueryRatio}%</p>
+                  <div className="text-center p-2 rounded-lg bg-slate-50">
+                    <p className="text-lg font-bold text-gray-900">{tenant.repeatQueryRatio}%</p>
                     <p className="text-xs text-muted-foreground">Repeat ratio</p>
                   </div>
                 </div>

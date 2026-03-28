@@ -30,12 +30,12 @@ export default function TenantAnalytics() {
     return (
       <Layout>
         <div className="animate-pulse space-y-8">
-          <div className="h-10 bg-white/5 rounded-lg w-64" />
+          <div className="h-10 bg-slate-50 rounded-lg w-64" />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[1,2,3].map(i => <div key={i} className="h-32 bg-white/5 rounded-2xl" />)}
+            {[1,2,3].map(i => <div key={i} className="h-32 bg-slate-50 rounded-2xl" />)}
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {[1,2].map(i => <div key={i} className="h-80 bg-white/5 rounded-2xl" />)}
+            {[1,2].map(i => <div key={i} className="h-80 bg-slate-50 rounded-2xl" />)}
           </div>
         </div>
       </Layout>
@@ -69,7 +69,7 @@ export default function TenantAnalytics() {
   return (
     <Layout>
       <div className="mb-8">
-        <h1 className="text-3xl font-display font-bold text-white mb-2">Analytics</h1>
+        <h1 className="text-3xl font-display font-bold text-gray-900 mb-2">Analytics</h1>
         <p className="text-muted-foreground">
           Credit query performance and risk insights for{' '}
           <span className="text-cyan-400 font-medium">{data.tenantName}</span>.
@@ -82,12 +82,12 @@ export default function TenantAnalytics() {
           <div key={i} className="glass-panel p-6 rounded-2xl relative overflow-hidden group">
             <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full blur-2xl opacity-20 ${kpi.bg} group-hover:opacity-40 transition-opacity`} />
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-white/60">{kpi.label}</p>
+              <p className="text-sm font-medium text-gray-500">{kpi.label}</p>
               <div className={`p-2 rounded-lg ${kpi.bg}`}>
                 <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
               </div>
             </div>
-            <p className="text-3xl font-display font-bold text-white">{kpi.value}</p>
+            <p className="text-3xl font-display font-bold text-gray-900">{kpi.value}</p>
           </div>
         ))}
       </div>
@@ -95,7 +95,7 @@ export default function TenantAnalytics() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="lg:col-span-2 glass-panel p-6 rounded-2xl">
-          <h3 className="text-lg font-bold text-white mb-6">Query Volume (Last 7 Days)</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-6">Query Volume (Last 7 Days)</h3>
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.queryTrend} barSize={28}>
@@ -120,7 +120,7 @@ export default function TenantAnalytics() {
         </div>
 
         <div className="glass-panel p-6 rounded-2xl">
-          <h3 className="text-lg font-bold text-white mb-6">Risk Distribution</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-6">Risk Distribution</h3>
           {riskPieData.length > 0 ? (
             <>
               <div className="h-[180px] relative">
@@ -146,17 +146,17 @@ export default function TenantAnalytics() {
               <div className="space-y-2 mt-4">
                 {riskPieData.map(item => (
                   <div key={item.name} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2 text-white/60">
+                    <div className="flex items-center gap-2 text-gray-500">
                       <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
                       <span className="truncate">{item.name}</span>
                     </div>
-                    <span className="text-white/80 font-mono">{item.value}</span>
+                    <span className="text-gray-700 font-mono">{item.value}</span>
                   </div>
                 ))}
               </div>
             </>
           ) : (
-            <div className="h-[200px] flex items-center justify-center text-white/30 text-sm">
+            <div className="h-[200px] flex items-center justify-center text-gray-400 text-sm">
               No data yet
             </div>
           )}
@@ -165,14 +165,14 @@ export default function TenantAnalytics() {
 
       {/* Recent Queries Table */}
       <div className="glass-panel rounded-2xl overflow-hidden">
-        <div className="p-6 border-b border-white/5 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-white">Recent Credit Queries</h3>
-          <span className="text-sm text-white/40">{data.recentQueries.length} most recent</span>
+        <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+          <h3 className="text-lg font-bold text-gray-900">Recent Credit Queries</h3>
+          <span className="text-sm text-gray-400">{data.recentQueries.length} most recent</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[700px]">
             <thead>
-              <tr className="border-b border-white/5 text-xs text-white/50 uppercase tracking-wider bg-white/[0.02]">
+              <tr className="border-b border-slate-200 text-xs text-gray-500 uppercase tracking-wider bg-slate-50">
                 <th className="p-4 font-semibold">Time</th>
                 <th className="p-4 font-semibold">NRC</th>
                 <th className="p-4 font-semibold">Customer</th>
@@ -181,28 +181,28 @@ export default function TenantAnalytics() {
                 <th className="p-4 font-semibold">Decision</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-slate-100">
               {data.recentQueries.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center text-white/30">
+                  <td colSpan={6} className="p-12 text-center text-gray-400">
                     No queries yet. Run credit lookups to see them here.
                   </td>
                 </tr>
               ) : data.recentQueries.map((q) => {
                 const Icon = DECISION_ICONS[q.decision] ?? AlertTriangle;
                 return (
-                  <tr key={q.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="p-4 text-xs font-mono text-white/50 whitespace-nowrap">
+                  <tr key={q.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="p-4 text-xs font-mono text-gray-500 whitespace-nowrap">
                       {format(new Date(q.queriedAt), 'MMM d, HH:mm')}
                     </td>
-                    <td className="p-4 font-mono text-sm text-white/80">{q.nrc}</td>
-                    <td className="p-4 text-sm text-white">{q.customerName}</td>
-                    <td className="p-4 text-sm font-bold font-mono text-white">{q.score}</td>
-                    <td className="p-4 text-sm text-white/70">{q.rating}</td>
+                    <td className="p-4 font-mono text-sm text-gray-700">{q.nrc}</td>
+                    <td className="p-4 text-sm text-gray-900">{q.customerName}</td>
+                    <td className="p-4 text-sm font-bold font-mono text-gray-900">{q.score}</td>
+                    <td className="p-4 text-sm text-gray-600">{q.rating}</td>
                     <td className="p-4">
                       <span className={cn(
                         'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border capitalize',
-                        DECISION_COLORS[q.decision] ?? 'text-white/50 bg-white/5 border-white/10'
+                        DECISION_COLORS[q.decision] ?? 'text-gray-500 bg-slate-50 border-slate-200'
                       )}>
                         <Icon className="w-3 h-3" />
                         {q.decision}

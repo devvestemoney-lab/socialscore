@@ -119,7 +119,7 @@ export default function TenantsList() {
     <Layout>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-display font-bold text-white mb-2">Tenant Management</h1>
+          <h1 className="text-3xl font-display font-bold text-gray-900 mb-2">Tenant Management</h1>
           <p className="text-muted-foreground">Manage institutions accessing the ZamCredit platform.</p>
         </div>
         <button
@@ -132,18 +132,18 @@ export default function TenantsList() {
       </div>
 
       <div className="glass-panel rounded-2xl overflow-hidden flex flex-col">
-        <div className="p-4 border-b border-white/5 bg-white/[0.02] flex items-center gap-4">
+        <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center gap-4">
           <div className="relative flex-1 max-w-sm">
-            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search tenants..."
-              className="w-full pl-10 pr-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors"
+              className="w-full pl-10 pr-4 py-2 bg-slate-100 border border-slate-200 rounded-lg text-gray-900 text-sm focus:outline-none focus:border-cyan-500 transition-colors"
             />
           </div>
-          <span className="text-sm text-white/40 whitespace-nowrap">{tenants.length} tenants</span>
+          <span className="text-sm text-gray-400 whitespace-nowrap">{tenants.length} tenants</span>
         </div>
 
         {isLoading ? (
@@ -154,7 +154,7 @@ export default function TenantsList() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[820px]">
               <thead>
-                <tr className="border-b border-white/5 text-xs text-white/50 uppercase tracking-wider font-semibold bg-white/[0.01]">
+                <tr className="border-b border-slate-200 text-xs text-gray-500 uppercase tracking-wider font-semibold bg-slate-50">
                   <th className="p-4">Name / Code</th>
                   <th className="p-4">Type</th>
                   <th className="p-4">Status</th>
@@ -164,17 +164,17 @@ export default function TenantsList() {
                   <th className="p-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-slate-100">
                 {tenants.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-12 text-center text-white/30">
+                    <td colSpan={7} className="p-12 text-center text-gray-400">
                       No tenants found. Add one to get started.
                     </td>
                   </tr>
                 ) : tenants.map((tenant) => (
-                  <tr key={tenant.id} className="hover:bg-white/[0.02] transition-colors group">
+                  <tr key={tenant.id} className="hover:bg-slate-50 transition-colors group">
                     <td className="p-4">
-                      <div className="font-medium text-white">{tenant.name}</div>
+                      <div className="font-medium text-gray-900">{tenant.name}</div>
                       <div className="text-xs text-cyan-400/70 font-mono mt-0.5">{tenant.code}</div>
                     </td>
                     <td className="p-4">
@@ -194,20 +194,20 @@ export default function TenantsList() {
                       </span>
                     </td>
                     <td className="p-4 text-sm">
-                      <span className="text-white font-mono">{tenant.apiCallsThisMonth.toLocaleString()}</span>
-                      <span className="text-white/40 ml-1">calls</span>
+                      <span className="text-gray-900 font-mono">{tenant.apiCallsThisMonth.toLocaleString()}</span>
+                      <span className="text-gray-400 ml-1">calls</span>
                     </td>
-                    <td className="p-4 text-sm text-white/50 truncate max-w-[150px]">
+                    <td className="p-4 text-sm text-gray-500 truncate max-w-[150px]">
                       {tenant.contactEmail ?? '—'}
                     </td>
-                    <td className="p-4 text-sm text-white/60 whitespace-nowrap">
+                    <td className="p-4 text-sm text-gray-500 whitespace-nowrap">
                       {format(new Date(tenant.createdAt), 'MMM d, yyyy')}
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => openEdit(tenant)}
-                          className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+                          className="p-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-gray-600 hover:text-gray-900 transition-colors"
                           title="Edit"
                         >
                           <Edit2 className="w-4 h-4" />
@@ -247,49 +247,49 @@ export default function TenantsList() {
           <div className="glass-panel w-full max-w-lg rounded-3xl p-8 relative animate-in fade-in zoom-in-95 duration-300">
             <button
               onClick={() => setShowCreate(false)}
-              className="absolute top-4 right-4 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+              className="absolute top-4 right-4 p-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-gray-500 hover:text-gray-900 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
-            <h2 className="text-2xl font-display font-bold text-white mb-2">Add New Tenant</h2>
+            <h2 className="text-2xl font-display font-bold text-gray-900 mb-2">Add New Tenant</h2>
             <p className="text-muted-foreground mb-6 text-sm">Onboard a new financial institution to the platform.</p>
 
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">Institution Name</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Institution Name</label>
                   <div className="relative">
-                    <Building2 className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+                    <Building2 className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                       type="text"
                       required
                       value={createForm.name}
                       onChange={e => setCreateForm(p => ({ ...p, name: e.target.value }))}
                       placeholder="e.g. Zanaco Bank"
-                      className="w-full pl-10 pr-4 py-2.5 bg-black/20 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:border-cyan-500 transition-colors"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">Tenant Code</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Tenant Code</label>
                   <div className="relative">
-                    <Code className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+                    <Code className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                       type="text"
                       required
                       value={createForm.code}
                       onChange={e => setCreateForm(p => ({ ...p, code: e.target.value.toUpperCase() }))}
                       placeholder="e.g. ZANACO"
-                      className="w-full pl-10 pr-4 py-2.5 bg-black/20 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors uppercase"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:border-cyan-500 transition-colors uppercase"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">Institution Type</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Institution Type</label>
                   <select
                     value={createForm.type}
                     onChange={e => setCreateForm(p => ({ ...p, type: e.target.value }))}
-                    className="w-full px-4 py-2.5 bg-black/20 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors capitalize"
+                    className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:border-cyan-500 transition-colors capitalize"
                   >
                     {TENANT_TYPES.map(t => (
                       <option key={t} value={t} className="bg-slate-900">{t.toUpperCase()}</option>
@@ -297,37 +297,37 @@ export default function TenantsList() {
                   </select>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">Contact Email</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Contact Email</label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+                    <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                       type="email"
                       required
                       value={createForm.contactEmail}
                       onChange={e => setCreateForm(p => ({ ...p, contactEmail: e.target.value }))}
                       placeholder="contact@institution.zm"
-                      className="w-full pl-10 pr-4 py-2.5 bg-black/20 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:border-cyan-500 transition-colors"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">Admin Name</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Admin Name</label>
                   <div className="relative">
-                    <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+                    <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                       type="text"
                       required
                       value={createForm.adminName}
                       onChange={e => setCreateForm(p => ({ ...p, adminName: e.target.value }))}
                       placeholder="Admin Full Name"
-                      className="w-full pl-10 pr-4 py-2.5 bg-black/20 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:border-cyan-500 transition-colors"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">Admin Password</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Admin Password</label>
                   <div className="relative">
-                    <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+                    <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                       type="password"
                       required
@@ -335,7 +335,7 @@ export default function TenantsList() {
                       value={createForm.adminPassword}
                       onChange={e => setCreateForm(p => ({ ...p, adminPassword: e.target.value }))}
                       placeholder="Min 8 characters"
-                      className="w-full pl-10 pr-4 py-2.5 bg-black/20 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:border-cyan-500 transition-colors"
                     />
                   </div>
                 </div>
@@ -345,7 +345,7 @@ export default function TenantsList() {
                 <button
                   type="button"
                   onClick={() => setShowCreate(false)}
-                  className="flex-1 py-3 rounded-xl font-medium bg-white/5 hover:bg-white/10 text-white border border-white/10 transition-colors"
+                  className="flex-1 py-3 rounded-xl font-medium bg-slate-50 hover:bg-slate-100 text-gray-900 border border-slate-200 transition-colors"
                 >
                   Cancel
                 </button>
@@ -368,45 +368,45 @@ export default function TenantsList() {
           <div className="glass-panel w-full max-w-md rounded-3xl p-8 relative animate-in fade-in zoom-in-95 duration-300">
             <button
               onClick={() => setEditTenant(null)}
-              className="absolute top-4 right-4 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+              className="absolute top-4 right-4 p-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-gray-500 hover:text-gray-900 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
-            <h2 className="text-2xl font-display font-bold text-white mb-2">Edit Tenant</h2>
-            <p className="text-sm text-white/50 mb-6 font-mono">{editTenant.code}</p>
+            <h2 className="text-2xl font-display font-bold text-gray-900 mb-2">Edit Tenant</h2>
+            <p className="text-sm text-gray-500 mb-6 font-mono">{editTenant.code}</p>
 
             <form onSubmit={handleEdit} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">Institution Name</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Institution Name</label>
                 <div className="relative">
-                  <Building2 className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+                  <Building2 className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     type="text"
                     required
                     value={editForm.name}
                     onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
-                    className="w-full pl-10 pr-4 py-2.5 bg-black/20 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:border-cyan-500 transition-colors"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">Contact Email</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Contact Email</label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+                  <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     type="email"
                     value={editForm.contactEmail}
                     onChange={e => setEditForm(p => ({ ...p, contactEmail: e.target.value }))}
-                    className="w-full pl-10 pr-4 py-2.5 bg-black/20 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:border-cyan-500 transition-colors"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">Institution Type</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Institution Type</label>
                 <select
                   value={editForm.type}
                   onChange={e => setEditForm(p => ({ ...p, type: e.target.value }))}
-                  className="w-full px-4 py-2.5 bg-black/20 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors"
+                  className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-gray-900 text-sm focus:outline-none focus:border-cyan-500 transition-colors"
                 >
                   {TENANT_TYPES.map(t => (
                     <option key={t} value={t} className="bg-slate-900">{t.toUpperCase()}</option>
@@ -418,7 +418,7 @@ export default function TenantsList() {
                 <button
                   type="button"
                   onClick={() => setEditTenant(null)}
-                  className="flex-1 py-3 rounded-xl font-medium bg-white/5 hover:bg-white/10 text-white border border-white/10 transition-colors"
+                  className="flex-1 py-3 rounded-xl font-medium bg-slate-50 hover:bg-slate-100 text-gray-900 border border-slate-200 transition-colors"
                 >
                   Cancel
                 </button>

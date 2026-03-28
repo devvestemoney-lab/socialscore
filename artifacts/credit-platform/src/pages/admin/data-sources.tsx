@@ -20,7 +20,7 @@ function HealthBar({ score }: { score: number }) {
   const color = score >= 90 ? '#10b981' : score >= 70 ? '#f59e0b' : '#ef4444';
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 rounded-full bg-white/10">
+      <div className="flex-1 h-1.5 rounded-full bg-slate-100">
         <div className="h-full rounded-full transition-all" style={{ width: `${score}%`, backgroundColor: color }} />
       </div>
       <span className="text-xs font-medium w-8 text-right" style={{ color }}>{score}%</span>
@@ -51,7 +51,7 @@ export default function DataSources() {
             <Database className="w-5 h-5 text-blue-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-display font-bold text-white">Data Source Management</h1>
+            <h1 className="text-2xl font-display font-bold text-gray-900">Data Source Management</h1>
             <p className="text-sm text-muted-foreground">Monitor integrations with banks, MNOs, and MFIs feeding data into the platform</p>
           </div>
         </div>
@@ -59,14 +59,14 @@ export default function DataSources() {
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
-            { label: 'Total Sources', value: summary.total, color: 'text-white', bg: 'bg-white/5', icon: Database },
+            { label: 'Total Sources', value: summary.total, color: 'text-gray-900', bg: 'bg-slate-50', icon: Database },
             { label: 'Healthy', value: summary.active, color: 'text-green-400', bg: 'bg-green-500/10', icon: CheckCircle2 },
             { label: 'Degraded', value: summary.degraded, color: 'text-yellow-400', bg: 'bg-yellow-500/10', icon: AlertTriangle },
             { label: 'Offline', value: summary.offline, color: 'text-red-400', bg: 'bg-red-500/10', icon: XCircle },
             { label: 'Health Score', value: `${summary.avgHealthScore}%`, color: 'text-cyan-400', bg: 'bg-cyan-500/10', icon: Activity },
           ].map(({ label, value, color, bg, icon: Icon }) => (
             <motion.div key={label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-              className={cn('p-4 rounded-xl border border-white/10', bg)}>
+              className={cn('p-4 rounded-xl border border-slate-200', bg)}>
               <Icon className={cn('w-5 h-5 mb-2', color)} />
               <p className={cn('text-xl font-bold', color)}>{value}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
@@ -75,10 +75,10 @@ export default function DataSources() {
         </div>
 
         {/* Records ingested */}
-        <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">Total Records Ingested</p>
-            <p className="text-2xl font-bold text-white">{summary.totalRecordsIngested.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-gray-900">{summary.totalRecordsIngested.toLocaleString()}</p>
           </div>
           <div className="text-right">
             <p className="text-sm text-muted-foreground">Platform Average Health</p>
@@ -91,7 +91,7 @@ export default function DataSources() {
           {['all', 'bank', 'mno', 'mfi', 'active', 'degraded', 'offline'].map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={cn('px-3 py-1.5 rounded-full text-sm font-medium capitalize transition-all border',
-                filter === f ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' : 'bg-white/5 text-muted-foreground border-white/10 hover:bg-white/10')}>
+                filter === f ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' : 'bg-slate-50 text-muted-foreground border-slate-200 hover:bg-slate-100')}>
               {f}
             </button>
           ))}
@@ -107,7 +107,7 @@ export default function DataSources() {
 
             return (
               <motion.div key={source.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                className={cn('p-5 rounded-xl border transition-all', source.status !== 'active' ? `${status.bg} ${status.border}` : 'bg-white/5 border-white/10')}>
+                className={cn('p-5 rounded-xl border transition-all', source.status !== 'active' ? `${status.bg} ${status.border}` : 'bg-slate-50 border-slate-200')}>
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${typeColor}20` }}>
@@ -116,7 +116,7 @@ export default function DataSources() {
                        <Activity className="w-5 h-5" style={{ color: typeColor }} />}
                     </div>
                     <div>
-                      <p className="font-semibold text-white">{source.name}</p>
+                      <p className="font-semibold text-gray-900">{source.name}</p>
                       <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: `${typeColor}20`, color: typeColor }}>
                         {typeLabels[source.type]}
                       </span>
@@ -137,16 +137,16 @@ export default function DataSources() {
                 </div>
 
                 <div className="grid grid-cols-3 gap-3 mb-4 text-center">
-                  <div className="p-2 rounded-lg bg-white/5">
-                    <p className="text-sm font-bold text-white">{source.avgLatencyMs > 0 ? `${source.avgLatencyMs}ms` : '—'}</p>
+                  <div className="p-2 rounded-lg bg-slate-50">
+                    <p className="text-sm font-bold text-gray-900">{source.avgLatencyMs > 0 ? `${source.avgLatencyMs}ms` : '—'}</p>
                     <p className="text-xs text-muted-foreground">Latency</p>
                   </div>
-                  <div className="p-2 rounded-lg bg-white/5">
-                    <p className="text-sm font-bold text-white">{source.uptime}%</p>
+                  <div className="p-2 rounded-lg bg-slate-50">
+                    <p className="text-sm font-bold text-gray-900">{source.uptime}%</p>
                     <p className="text-xs text-muted-foreground">Uptime</p>
                   </div>
-                  <div className="p-2 rounded-lg bg-white/5">
-                    <p className="text-sm font-bold text-white">{(source.recordsContributed / 1000).toFixed(1)}K</p>
+                  <div className="p-2 rounded-lg bg-slate-50">
+                    <p className="text-sm font-bold text-gray-900">{(source.recordsContributed / 1000).toFixed(1)}K</p>
                     <p className="text-xs text-muted-foreground">Records</p>
                   </div>
                 </div>
@@ -170,7 +170,7 @@ export default function DataSources() {
 
                 <div className="mt-3 flex flex-wrap gap-1">
                   {source.dataTypes.map((dt: string) => (
-                    <span key={dt} className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-muted-foreground capitalize">{dt.replace('_', ' ')}</span>
+                    <span key={dt} className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-muted-foreground capitalize">{dt.replace('_', ' ')}</span>
                   ))}
                 </div>
               </motion.div>
