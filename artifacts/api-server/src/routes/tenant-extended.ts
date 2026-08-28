@@ -68,7 +68,7 @@ router.get("/users", requireAuth, requireRole("tenant_admin", "tenant_user"), as
       name: u.name,
       email: u.email,
       role: u.role,
-      status: u.status,
+      status: u.isActive ? "active" : "suspended",
       createdAt: u.createdAt.toISOString(),
       lastLogin: null,
     })),
@@ -101,36 +101,36 @@ router.post("/users", requireAuth, requireRole("tenant_admin"), async (req: Auth
     name, email, role,
     passwordHash,
     tenantId,
-    status: "active",
+    isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
   }).returning();
 
   res.json({
     success: true,
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status },
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.isActive ? "active" : "suspended" },
   });
 });
 
 router.put("/users/:userId", requireAuth, requireRole("tenant_admin"), async (req: AuthRequest, res) => {
   const tenantId = req.user!.tenantId;
-  const { userId } = req.params;
+  const userId = String(req.params.userId);
   const { name, role, status } = req.body;
 
   const [existing] = await db.select().from(usersTable).where(and(eq(usersTable.id, userId), eq(usersTable.tenantId, tenantId!)));
   if (!existing) { res.status(404).json({ error: "Not Found" }); return; }
 
   const [updated] = await db.update(usersTable)
-    .set({ name: name || existing.name, role: role || existing.role, status: status || existing.status, updatedAt: new Date() })
+    .set({ name: name || existing.name, role: role || existing.role, isActive: status ? status === "active" : existing.isActive, updatedAt: new Date() })
     .where(eq(usersTable.id, userId))
     .returning();
 
-  res.json({ success: true, user: { id: updated.id, name: updated.name, email: updated.email, role: updated.role, status: updated.status } });
+  res.json({ success: true, user: { id: updated.id, name: updated.name, email: updated.email, role: updated.role, status: updated.isActive ? "active" : "suspended" } });
 });
 
 router.delete("/users/:userId", requireAuth, requireRole("tenant_admin"), async (req: AuthRequest, res) => {
   const tenantId = req.user!.tenantId;
-  const { userId } = req.params;
+  const userId = String(req.params.userId);
 
   const [existing] = await db.select().from(usersTable).where(and(eq(usersTable.id, userId), eq(usersTable.tenantId, tenantId!)));
   if (!existing) { res.status(404).json({ error: "Not Found" }); return; }

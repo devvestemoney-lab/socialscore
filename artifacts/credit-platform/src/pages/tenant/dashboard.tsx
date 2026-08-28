@@ -39,7 +39,7 @@ export default function TenantDashboard() {
 
   const { data, isLoading, error } = useGetRiskProfile(searchNrc, {
     request: apiOptions.request,
-    query: { enabled: !!searchNrc, retry: false }
+    query: { enabled: !!searchNrc, retry: false } as any
   });
 
   const handleSearch = (e: React.FormEvent) => {
@@ -156,7 +156,7 @@ export default function TenantDashboard() {
                     <span className="font-mono bg-slate-100 px-2 py-1 rounded text-xs">NRC: {data.nrc}</span>
                     <span>{data.customer.phone}</span>
                     <span>{data.customer.province}</span>
-                    {data.customer.employer && <span>{data.customer.employer}</span>}
+                    {(data.customer as any).employer && <span>{(data.customer as any).employer}</span>}
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">

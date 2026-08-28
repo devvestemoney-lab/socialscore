@@ -44,7 +44,7 @@ router.post("/", requireAuth, requireRole("super_admin"), async (req, res) => {
 });
 
 router.get("/:tenantId", requireAuth, requireRole("super_admin"), async (req, res) => {
-  const [tenant] = await db.select().from(tenantsTable).where(eq(tenantsTable.id, req.params.tenantId));
+  const [tenant] = await db.select().from(tenantsTable).where(eq(tenantsTable.id, String(req.params.tenantId)));
   if (!tenant) {
     res.status(404).json({ error: "Not Found", message: "Tenant not found" });
     return;
@@ -62,7 +62,7 @@ router.put("/:tenantId", requireAuth, requireRole("super_admin"), async (req, re
 
   const [updated] = await db.update(tenantsTable)
     .set(updates)
-    .where(eq(tenantsTable.id, req.params.tenantId))
+    .where(eq(tenantsTable.id, String(req.params.tenantId)))
     .returning();
 
   if (!updated) {
@@ -73,7 +73,7 @@ router.put("/:tenantId", requireAuth, requireRole("super_admin"), async (req, re
 });
 
 router.delete("/:tenantId", requireAuth, requireRole("super_admin"), async (req, res) => {
-  await db.delete(tenantsTable).where(eq(tenantsTable.id, req.params.tenantId));
+  await db.delete(tenantsTable).where(eq(tenantsTable.id, String(req.params.tenantId)));
   res.json({ success: true, message: "Tenant deleted" });
 });
 
@@ -81,7 +81,7 @@ router.post("/:tenantId/api-key", requireAuth, requireRole("super_admin"), async
   const newKey = `zc_${crypto.randomBytes(32).toString("hex")}`;
   const [tenant] = await db.update(tenantsTable)
     .set({ apiKey: newKey, updatedAt: new Date() })
-    .where(eq(tenantsTable.id, req.params.tenantId))
+    .where(eq(tenantsTable.id, String(req.params.tenantId)))
     .returning();
 
   if (!tenant) {

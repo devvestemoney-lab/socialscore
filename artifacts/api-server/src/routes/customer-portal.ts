@@ -29,9 +29,9 @@ router.get("/report", requireAuth, async (req: AuthRequest, res) => {
   const latestScore = scores.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
   const activeLoans = loans.filter(l => l.status === "active");
   const defaultedLoans = loans.filter(l => l.status === "defaulted" || l.status === "written_off");
-  const completedLoans = loans.filter(l => l.status === "completed");
+  const completedLoans = loans.filter(l => l.status === "closed");
   const totalOutstanding = activeLoans.reduce((sum, l) => sum + Number(l.outstandingBalance), 0);
-  const totalPrincipal = loans.reduce((sum, l) => sum + Number(l.principalAmount), 0);
+  const totalPrincipal = loans.reduce((sum, l) => sum + Number(l.amount), 0);
   const missedPaymentsTotal = loans.reduce((sum, l) => sum + (l.missedPayments || 0), 0);
   const onTimeRate = loans.length > 0
     ? Math.round(((loans.length - missedPaymentsTotal) / loans.length) * 100) : 100;
@@ -40,7 +40,7 @@ router.get("/report", requireAuth, async (req: AuthRequest, res) => {
     const instLoans = loans.filter(l => l.institution === inst);
     return {
       institution: inst,
-      type: instLoans[0]?.loanType || "loan",
+      type: instLoans[0]?.institutionType || "loan",
       activeLoans: instLoans.filter(l => l.status === "active").length,
       outstanding: Math.round(instLoans.filter(l => l.status === "active").reduce((sum, l) => sum + Number(l.outstandingBalance), 0)),
     };
@@ -80,8 +80,8 @@ router.get("/report", requireAuth, async (req: AuthRequest, res) => {
     loans: loans.map(l => ({
       id: l.id,
       institution: l.institution,
-      type: l.loanType,
-      principalAmount: Number(l.principalAmount),
+      type: l.institutionType,
+      principalAmount: Number(l.amount),
       outstandingBalance: Number(l.outstandingBalance),
       interestRate: Number(l.interestRate),
       status: l.status,
