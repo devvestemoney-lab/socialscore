@@ -1,224 +1,208 @@
 import React from 'react';
 import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
-import { motion } from 'framer-motion';
 import {
-  LayoutDashboard,
-  Users,
-  LogOut,
-  Activity,
-  ShieldCheck,
-  Building,
-  Menu,
-  X,
-  Brain,
-  DollarSign,
-  ShieldAlert,
-  Database,
-  BookOpen,
-  BarChart3,
+  LayoutDashboard, Users, LogOut, Activity, ShieldCheck, Building, Menu, X,
+  Brain, DollarSign, ShieldAlert, Database, BookOpen, BarChart3, Bell,
+  Calendar, Sun, ScrollText, LifeBuoy, FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+type NavItem = { icon: React.ElementType; label: string; href: string };
+type NavGroup = { section: string; items: NavItem[] };
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, logoutUser } = useAuth();
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
-  const getNavItems = () => {
+  const getNavGroups = (): NavGroup[] => {
     if (user?.role === 'super_admin') {
       return [
-        { icon: LayoutDashboard, label: 'Overview',       href: '/admin' },
-        { icon: Building,        label: 'Tenants',        href: '/admin/tenants' },
-        { icon: Brain,           label: 'Scoring Models', href: '/admin/scoring-models' },
-        { icon: Database,        label: 'Data Sources',   href: '/admin/data-sources' },
-        { icon: ShieldAlert,     label: 'Fraud Monitor',  href: '/admin/fraud' },
-        { icon: DollarSign,      label: 'Billing',        href: '/admin/billing' },
-        { icon: Activity,        label: 'Audit Logs',     href: '/admin/audit-logs' },
+        { section: 'Overview', items: [
+          { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
+        ]},
+        { section: 'Core Modules', items: [
+          { icon: Building, label: 'Lenders / Institutions', href: '/admin/tenants' },
+          { icon: Database, label: 'Data Sources', href: '/admin/data-sources' },
+        ]},
+        { section: 'Risk & Scoring', items: [
+          { icon: Brain, label: 'Scoring Models', href: '/admin/scoring-models' },
+          { icon: ShieldAlert, label: 'Fraud Detection', href: '/admin/fraud' },
+        ]},
+        { section: 'Administration', items: [
+          { icon: DollarSign, label: 'Billing', href: '/admin/billing' },
+          { icon: ScrollText, label: 'Audit Logs', href: '/admin/audit-logs' },
+        ]},
       ];
     }
     if (user?.role === 'customer') {
       return [
-        { icon: ShieldCheck, label: 'Consent & Portal', href: '/consent' },
+        { section: 'My Portal', items: [
+          { icon: ShieldCheck, label: 'Consent & Reports', href: '/consent' },
+        ]},
       ];
     }
     return [
-      { icon: LayoutDashboard, label: 'Credit Lookup',   href: '/dashboard' },
-      { icon: BarChart3,       label: 'Analytics',       href: '/dashboard/analytics' },
-      { icon: BookOpen,        label: 'Portfolio',       href: '/dashboard/portfolio' },
-      { icon: Users,           label: 'Team',            href: '/dashboard/users' },
+      { section: 'Overview', items: [
+        { icon: LayoutDashboard, label: 'Credit Lookup', href: '/dashboard' },
+        { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
+      ]},
+      { section: 'Portfolio', items: [
+        { icon: BookOpen, label: 'Loan Book', href: '/dashboard/portfolio' },
+        { icon: Users, label: 'Team', href: '/dashboard/users' },
+      ]},
     ];
   };
 
-  const navItems = getNavItems();
+  const navGroups = getNavGroups();
+  const flatItems = navGroups.flatMap(g => g.items);
 
   const isActive = (href: string) => {
     if (href === '/admin' || href === '/dashboard') return location === href;
     return location.startsWith(href);
   };
 
+  const current = flatItems.find(i => isActive(i.href));
+  const pageTitle = current?.label ?? 'Dashboard';
+
   const roleLabel =
     user?.role === 'super_admin' ? 'Super Admin' :
-    user?.role === 'customer'    ? 'Customer Portal' :
+    user?.role === 'customer' ? 'Customer' :
     user?.tenantName ?? 'Tenant';
+
+  const initials = (user?.name ?? 'U')
+    .split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+
+  const dateRange = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  const SidebarInner = () => (
+    <>
+      {/* Logo */}
+      <div className="px-5 pt-6 pb-5 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: 'linear-gradient(135deg, #4F6EF7, #3B5BDB)' }}>
+          <ShieldCheck className="w-5 h-5 text-white" />
+        </div>
+        <div className="leading-tight">
+          <p className="text-lg font-display font-bold text-white tracking-wide">ZCRB</p>
+          <p className="text-[10px] uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            Credit Reference Bureau
+          </p>
+        </div>
+      </div>
+
+      {/* Nav groups */}
+      <nav className="flex-1 px-3 overflow-y-auto pb-4">
+        {navGroups.map(group => (
+          <div key={group.section} className="mb-2">
+            <p className="px-3 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'rgba(255,255,255,0.35)' }}>
+              {group.section}
+            </p>
+            <div className="space-y-0.5">
+              {group.items.map(item => {
+                const active = isActive(item.href);
+                return (
+                  <Link key={item.href} href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      active ? 'text-white' : 'hover:text-white'
+                    )}
+                    style={active
+                      ? { background: '#4F6EF7' }
+                      : { color: 'rgba(255,255,255,0.6)' }}>
+                    <item.icon className="w-[18px] h-[18px] shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      {/* User card */}
+      <div className="p-3 border-t" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+        <div className="flex items-center gap-3 px-2 py-2 rounded-xl"
+          style={{ background: 'rgba(255,255,255,0.05)' }}>
+          <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+            style={{ background: 'linear-gradient(135deg, #4F6EF7, #7C5CFC)' }}>
+            {initials}
+          </div>
+          <div className="min-w-0 flex-1 leading-tight">
+            <p className="text-sm font-semibold text-white truncate">{user?.name}</p>
+            <p className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>{roleLabel}</p>
+          </div>
+          <button onClick={logoutUser} title="Sign out"
+            className="p-2 rounded-lg transition-colors hover:bg-white/10"
+            style={{ color: 'rgba(255,255,255,0.55)' }}>
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <div className="min-h-screen bg-background flex overflow-hidden">
-
-      {/* ══ Sidebar (always dark) ══ */}
-      <aside
-        className="hidden md:flex w-64 flex-col shrink-0 relative z-10"
-        style={{
-          background: 'linear-gradient(180deg, #0d1525 0%, #0a1020 100%)',
-          borderRight: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
-        {/* Logo */}
-        <div className="p-6 pb-4">
-          <Link href="/" className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
-              style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', boxShadow: '0 4px 14px rgba(6,182,212,0.35)' }}
-            >
-              <Activity className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-display font-bold text-white tracking-wide">
-              Zam<span className="text-cyan-400">Credit</span>
-            </span>
-          </Link>
-        </div>
-
-        {/* User pill */}
-        <div className="px-4 pb-4">
-          <div
-            className="px-4 py-3 rounded-xl"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}
-          >
-            <p className="text-[10px] uppercase tracking-widest font-semibold mb-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              Signed in as
-            </p>
-            <p className="text-sm font-semibold text-white truncate">{user?.name}</p>
-            <p className="text-xs text-cyan-400 truncate mt-0.5">{roleLabel}</p>
-          </div>
-        </div>
-
-        {/* Nav */}
-        <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto pb-4">
-          {navItems.map((item) => {
-            const active = isActive(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 group relative',
-                  active
-                    ? 'text-white'
-                    : 'hover:text-white'
-                )}
-                style={active
-                  ? { background: 'rgba(6,182,212,0.15)', color: '#fff' }
-                  : { color: 'rgba(255,255,255,0.55)' }
-                }
-              >
-                {active && (
-                  <motion.div
-                    layoutId="active-nav"
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-r-full"
-                    style={{ background: '#06b6d4' }}
-                  />
-                )}
-                <item.icon
-                  className="w-4 h-4 shrink-0 transition-colors"
-                  style={{ color: active ? '#06b6d4' : undefined }}
-                />
-                <span className="font-medium text-sm">{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Logout */}
-        <div className="p-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <button
-            onClick={logoutUser}
-            className="flex w-full items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200"
-            style={{ color: 'rgba(255,255,255,0.45)' }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.12)';
-              (e.currentTarget as HTMLButtonElement).style.color = '#f87171';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLButtonElement).style.background = '';
-              (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.45)';
-            }}
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="font-medium text-sm">Sign Out</span>
-          </button>
-        </div>
+      {/* Sidebar — desktop */}
+      <aside className="hidden md:flex w-64 flex-col shrink-0 relative z-10"
+        style={{ background: '#111827', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+        <SidebarInner />
       </aside>
 
-      {/* ══ Main content (light) ══ */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      {/* Sidebar — mobile */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setIsMobileMenuOpen(false)} />
+          <aside className="absolute left-0 top-0 bottom-0 w-72 flex flex-col"
+            style={{ background: '#111827' }}>
+            <button className="absolute top-4 right-4 text-white/60" onClick={() => setIsMobileMenuOpen(false)}>
+              <X className="w-5 h-5" />
+            </button>
+            <SidebarInner />
+          </aside>
+        </div>
+      )}
 
-        {/* Mobile header */}
-        <header
-          className="md:hidden flex items-center justify-between p-4 z-20"
-          style={{
-            background: '#0d1525',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <Activity className="w-6 h-6 text-cyan-400" />
-            <span className="text-lg font-display font-bold text-white">ZamCredit</span>
+      {/* Main column */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+        {/* Top header */}
+        <header className="h-16 shrink-0 bg-white border-b border-slate-200 flex items-center gap-4 px-4 md:px-6">
+          <button className="md:hidden p-2 -ml-2 text-gray-600" onClick={() => setIsMobileMenuOpen(true)}>
+            <Menu className="w-5 h-5" />
+          </button>
+          <div className="flex items-baseline gap-3 min-w-0">
+            <h2 className="text-lg font-display font-bold text-gray-900 truncate">{pageTitle}</h2>
+            {user?.role === 'super_admin' && (
+              <span className="hidden sm:inline text-xs text-gray-400">Enterprise Overview</span>
+            )}
           </div>
-          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-white/70 p-2 hover:text-white transition-colors">
-            {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          <div className="flex-1" />
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-gray-600">
+            <Calendar className="w-3.5 h-3.5 text-gray-400" />
+            {dateRange}
+          </div>
+          <button className="relative p-2 rounded-lg hover:bg-slate-100 text-gray-500">
+            <Bell className="w-[18px] h-[18px]" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500" />
+          </button>
+          <button className="p-2 rounded-lg hover:bg-slate-100 text-gray-500 hidden sm:block">
+            <Sun className="w-[18px] h-[18px]" />
           </button>
         </header>
 
-        {/* Mobile menu drawer */}
-        {isMobileMenuOpen && (
-          <div
-            className="md:hidden absolute top-[57px] left-0 w-full z-30 p-4 flex flex-col gap-0.5 max-h-[80vh] overflow-y-auto"
-            style={{ background: '#0d1525', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-          >
-            {navItems.map(item => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-3 p-3 rounded-xl transition-colors"
-                style={{ color: 'rgba(255,255,255,0.7)' }}
-              >
-                <item.icon className="w-4 h-4 text-cyan-400" />
-                <span className="text-sm font-medium">{item.label}</span>
-              </Link>
-            ))}
-            <button
-              onClick={logoutUser}
-              className="flex items-center gap-3 p-3 rounded-xl mt-2 text-red-400"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="text-sm font-medium">Sign Out</span>
-            </button>
-          </div>
-        )}
-
-        {/* Page content */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
-            className="max-w-7xl mx-auto"
-          >
-            {children}
-          </motion.div>
-        </div>
-      </main>
+        {/* Content */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+          {children}
+          <p className="text-center text-xs text-gray-400 mt-10 pb-4">
+            © {new Date().getFullYear()} ZCRB. All rights reserved.
+            <span className="mx-2">·</span> Enterprise CRB Platform
+          </p>
+        </main>
+      </div>
     </div>
   );
 }

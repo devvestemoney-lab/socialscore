@@ -42,7 +42,7 @@
   --popover-foreground: 222 47% 11%;
 
   /* Cyan/Teal Primary */
-  --primary: 189 94% 38%;
+  --primary: 228 91% 64%;
   --primary-foreground: 0 0% 100%;
 
   --secondary: 220 14% 93%;
@@ -51,7 +51,7 @@
   --muted: 220 14% 93%;
   --muted-foreground: 215 16% 47%;
 
-  --accent: 189 94% 38%;
+  --accent: 228 91% 64%;
   --accent-foreground: 0 0% 100%;
 
   --destructive: 0 62.8% 50.6%;
@@ -59,7 +59,7 @@
 
   --border: 220 13% 88%;
   --input: 220 13% 88%;
-  --ring: 189 94% 38%;
+  --ring: 228 91% 64%;
 
   --radius: 0.75rem;
 }
@@ -99,5 +99,5 @@
 
 /* Animated gradient text */
 .text-gradient {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-cyan-500 to-blue-500;
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-[#4F6EF7] to-[#3B5BDB];
 }
