@@ -13,6 +13,7 @@ export const customersTable = pgTable("customers", {
   email: text("email"),
   province: text("province").notNull(),
   consentGiven: boolean("consent_given").notNull().default(false),
+  identityVerified: boolean("identity_verified").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

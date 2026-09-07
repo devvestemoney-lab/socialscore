@@ -102,7 +102,7 @@ async function seed() {
   const customers = [
     {
       id: uuid(),
-      nrc: "12/345678/67",
+      nrc: "123456/78/1",
       passport: "ZM123456",
       phone: "+260977123456",
       firstName: "Chanda",
@@ -114,7 +114,7 @@ async function seed() {
     },
     {
       id: uuid(),
-      nrc: "87/654321/32",
+      nrc: "654321/87/1",
       passport: null,
       phone: "+260966654321",
       firstName: "Mutale",
@@ -126,7 +126,7 @@ async function seed() {
     },
     {
       id: uuid(),
-      nrc: "34/789012/45",
+      nrc: "789012/34/1",
       passport: "ZM789012",
       phone: "+260955789012",
       firstName: "Thandiwe",
@@ -138,7 +138,7 @@ async function seed() {
     },
     {
       id: uuid(),
-      nrc: "56/111222/78",
+      nrc: "111222/56/1",
       passport: null,
       phone: "+260944111222",
       firstName: "Joseph",
@@ -150,7 +150,7 @@ async function seed() {
     },
     {
       id: uuid(),
-      nrc: "90/333444/12",
+      nrc: "333444/90/1",
       passport: null,
       phone: "+260933333444",
       firstName: "Grace",
@@ -342,11 +342,11 @@ async function seed() {
   console.log("  Tenant (FINCA):  finca@zamcredit.zm / finca123");
   console.log("  Customer:       customer@zamcredit.zm / customer123");
   console.log("\nDemo NRC numbers:");
-  console.log("  Chanda Mwila (Good):     12/345678/67");
-  console.log("  Mutale Bwalya (Fair):    87/654321/32");
-  console.log("  Thandiwe Phiri (Poor):   34/789012/45");
-  console.log("  Joseph Lungu (Excellent): 56/111222/78");
-  console.log("  Grace Tembo (Fair):      90/333444/12");
+  console.log("  Chanda Mwila (Good):     123456/78/1");
+  console.log("  Mutale Bwalya (Fair):    654321/87/1");
+  console.log("  Thandiwe Phiri (Poor):   789012/34/1");
+  console.log("  Joseph Lungu (Excellent): 111222/56/1");
+  console.log("  Grace Tembo (Fair):      333444/90/1");
 }
 
 seed().then(() => process.exit(0)).catch(err => { console.error(err); process.exit(1); });

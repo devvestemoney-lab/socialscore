@@ -6,11 +6,19 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "seed": "tsx ./src/seed.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "seed:management": "tsx ./src/seed-management.ts",
+    "seed:consumer-credit": "tsx ./src/seed-consumer-credit.ts",
+    "seed:data-ecosystem": "tsx ./src/seed-data-ecosystem.ts",
+    "seed:operations": "tsx ./src/seed-operations.ts",
+    "seed:risk": "tsx ./src/seed-risk.ts",
+    "seed:administration": "tsx ./src/seed-administration.ts",
+    "seed:watchlists": "tsx ./src/seed-watchlists.ts"
   },
   "dependencies": {
     "@workspace/db": "workspace:*",
-    "bcryptjs": "^2.4.3"
+    "bcryptjs": "^2.4.3",
+    "drizzle-orm": "catalog:"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

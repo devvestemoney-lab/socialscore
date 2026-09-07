@@ -12,6 +12,25 @@ export const tenantsTable = pgTable("tenants", {
   apiKey: text("api_key").unique(),
   apiCallsThisMonth: integer("api_calls_this_month").notNull().default(0),
   totalQueries: integer("total_queries").notNull().default(0),
+  kybStatus: text("kyb_status", { enum: ["pending", "verified", "rejected"] }).notNull().default("pending"),
+  kyb: jsonb("kyb").$type<{
+    registrationNo?: string;
+    tpin?: string;
+    licenseNo?: string;
+    regulator?: string;
+    incorporationDate?: string;
+    website?: string;
+    phone?: string;
+    address?: { street?: string; city?: string; province?: string };
+    complianceOfficer?: { name?: string; email?: string; phone?: string };
+    technicalContact?: { name?: string; email?: string };
+    directors?: { name: string; idNumber: string; role: string; shareholding: number; pep: boolean }[];
+    expectedMonthlyReports?: number;
+    dataTypesContributed?: string[];
+    purposes?: string[];
+    pepDeclared?: boolean;
+    amlPolicyConfirmed?: boolean;
+  }>(),
   settings: jsonb("settings").$type<{
     scoringModel: "standard" | "conservative" | "aggressive";
     maxLoanAmount: number;
