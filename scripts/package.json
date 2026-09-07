@@ -14,7 +14,8 @@
     "seed:risk": "tsx ./src/seed-risk.ts",
     "seed:administration": "tsx ./src/seed-administration.ts",
     "seed:watchlists": "tsx ./src/seed-watchlists.ts",
-    "seed:commercial": "tsx ./src/seed-commercial.ts"
+    "seed:commercial": "tsx ./src/seed-commercial.ts",
+    "seed:uploads": "tsx ./src/seed-uploads.ts"
   },
   "dependencies": {
     "@workspace/db": "workspace:*",

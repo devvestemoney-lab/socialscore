@@ -27,6 +27,7 @@ import tenantDisputesRouter from "./tenant-disputes.js";
 import tenantComplianceRouter from "./tenant-compliance.js";
 import tenantPortfolioAlertsRouter from "./tenant-portfolio-alerts.js";
 import tenantBillingRouter from "./tenant-billing.js";
+import tenantDataRouter from "./tenant-data.js";
 import customerPortalRouter from "./customer-portal.js";
 
 const router: IRouter = Router();
@@ -59,6 +60,7 @@ router.use("/tenant", tenantDisputesRouter);
 router.use("/tenant", tenantComplianceRouter);
 router.use("/tenant", tenantPortfolioAlertsRouter);
 router.use("/tenant", tenantBillingRouter);
+router.use("/tenant", tenantDataRouter);
 router.use("/customer", customerPortalRouter);
 
 export default router;
