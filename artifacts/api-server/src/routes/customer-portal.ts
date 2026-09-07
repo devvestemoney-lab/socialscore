@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, customersTable, loansTable, creditScoresTable, auditLogsTable, consentsTable, tenantsTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { db, usersTable, customersTable, loansTable, creditScoresTable, auditLogsTable, consentsTable, tenantsTable, disputesTable } from "@workspace/db";
+import { eq, desc, sql } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../middlewares/auth.js";
 import { randomUUID } from "crypto";
 
@@ -138,24 +138,13 @@ function actionToDataType(action: string): string {
 
 // ─── DISPUTES ──────────────────────────────────────────────────────────────────
 
-const disputesStore: Array<{
-  id: string;
-  customerId: string;
-  type: string;
-  description: string;
-  affectedInstitution: string;
-  loanId: string | null;
-  status: "open" | "under_review" | "resolved" | "dismissed";
-  resolution: string | null;
-  createdAt: string;
-  updatedAt: string;
-}> = [];
-
 router.get("/disputes", requireAuth, async (req: AuthRequest, res) => {
   const customer = await getCustomer(req.user!.userId);
   if (!customer) { res.status(404).json({ error: "Not Found" }); return; }
 
-  const myDisputes = disputesStore.filter(d => d.customerId === customer.id);
+  const myDisputes = await db.select().from(disputesTable)
+    .where(eq(disputesTable.customerId, customer.id))
+    .orderBy(desc(disputesTable.openedAt));
   res.json({ disputes: myDisputes, total: myDisputes.length });
 });
 
@@ -163,26 +152,21 @@ router.post("/disputes", requireAuth, async (req: AuthRequest, res) => {
   const customer = await getCustomer(req.user!.userId);
   if (!customer) { res.status(404).json({ error: "Not Found" }); return; }
 
-  const { type, description, affectedInstitution, loanId } = req.body;
+  const { type, description, affectedInstitution } = req.body;
   if (!type || !description || !affectedInstitution) {
     res.status(400).json({ error: "Bad Request", message: "type, description, affectedInstitution required" });
     return;
   }
 
-  const dispute = {
-    id: randomUUID(),
+  const [{ maxNo }] = await db.select({ maxNo: sql<number>`coalesce(max(substring(case_no from 10)::int), 900)` }).from(disputesTable);
+  const [dispute] = await db.insert(disputesTable).values({
+    caseNo: `DSP-2026-${String(Number(maxNo) + 1).padStart(4, "0")}`,
     customerId: customer.id,
+    institutionName: affectedInstitution,
     type,
     description,
-    affectedInstitution,
-    loanId: loanId || null,
-    status: "open" as const,
-    resolution: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-
-  disputesStore.push(dispute);
+    dueAt: new Date(Date.now() + 21 * 86_400_000),
+  }).returning();
   res.status(201).json({ success: true, dispute });
 });
 

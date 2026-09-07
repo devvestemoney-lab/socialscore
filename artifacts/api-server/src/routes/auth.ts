@@ -28,6 +28,10 @@ router.post("/login", async (req, res) => {
     tenantName = tenant?.name || null;
   }
 
+  await db.update(usersTable)
+    .set({ lastLoginAt: new Date(), ...(user.status === "invited" ? { status: "active" as const } : {}) })
+    .where(eq(usersTable.id, user.id));
+
   const token = signToken({ userId: user.id, email: user.email, role: user.role, tenantId: user.tenantId });
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
