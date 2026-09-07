@@ -19,3 +19,4 @@ export * from "./dispute_responses";
 export * from "./portfolio_alerts";
 export * from "./commercial";
 export * from "./data_uploads";
+export * from "./tenant_integrations";
