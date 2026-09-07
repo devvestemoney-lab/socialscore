@@ -1,284 +1,167 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Layout } from '@/components/layout';
+import { PageHeader, KpiGrid, Panel, Badge, Table, Td, Modal, Field, inputCls } from '@/components/admin/page-kit';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
-import { motion } from 'framer-motion';
-import { Users, Plus, Pencil, Trash2, ShieldCheck, Eye, Crown, X, Check } from 'lucide-react';
+import { Users, UserCheck, MailPlus, UserX, ShieldCheck, ShieldOff, Plus, Loader2, Copy, Clock3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const API = import.meta.env.BASE_URL.replace(/\/$/, '') + '/api';
-
-const roleConfig: Record<string, { label: string; icon: React.ElementType; color: string; bg: string; description: string }> = {
-  tenant_admin: { label: 'Admin', icon: Crown, color: 'text-yellow-400', bg: 'bg-yellow-500/10', description: 'Full access: users, rules, decisions' },
-  tenant_user: { label: 'User', icon: Eye, color: 'text-blue-400', bg: 'bg-blue-500/10', description: 'View credit profiles, make queries' },
+const statusTone: Record<string, string> = { active: 'green', invited: 'amber', suspended: 'red' };
+const ago = (iso: string | null) => {
+  if (!iso) return 'Never';
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 3600) return `${Math.max(1, Math.floor(s / 60))} min ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)} hr ago`;
+  const d = Math.floor(s / 86400);
+  return d === 1 ? 'Yesterday' : `${d} days ago`;
 };
-
-const statusConfig = {
-  active: { color: 'text-green-400', bg: 'bg-green-500/10', dot: 'bg-green-400' },
-  inactive: { color: 'text-red-400', bg: 'bg-red-500/10', dot: 'bg-red-400' },
-  suspended: { color: 'text-yellow-400', bg: 'bg-yellow-500/10', dot: 'bg-yellow-400' },
-};
-
-interface User { id: string; name: string; email: string; role: string; status: string; createdAt: string; }
-
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-        className="bg-[#0f172a] border border-slate-200 rounded-2xl shadow-2xl w-full max-w-md p-6 m-4">
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-gray-900 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"><X className="w-4 h-4" /></button>
-        </div>
-        {children}
-      </motion.div>
-    </div>
-  );
-}
 
 export default function TenantUsers() {
   const { request, user: me } = useAuth();
-  const { toast } = useToast();
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
-  const [editUser, setEditUser] = useState<User | null>(null);
-  const [form, setForm] = useState({ name: '', email: '', role: 'tenant_user', password: '' });
-  const [submitting, setSubmitting] = useState(false);
+  const [data, setData] = useState<any>(null);
+  const [roles, setRoles] = useState<any[]>([]);
+  const [filter, setFilter] = useState('all');
+  const [showInvite, setShowInvite] = useState(false);
+  const [form, setForm] = useState({ name: '', email: '', role: 'tenant_user', roleId: '' });
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const isAdmin = me?.role === 'tenant_admin';
 
   async function load() {
-    const res = await request(`${API}/tenant/users`);
-    const data = await res.json();
-    setUsers(data.users || []);
-    setLoading(false);
+    const [uRes, rRes] = await Promise.all([request(`${API}/tenant/team`), request(`${API}/tenant/team/roles`)]);
+    setData(await uRes.json());
+    setRoles((await rRes.json()).roles ?? []);
   }
-
   useEffect(() => { load(); }, []);
 
-  async function addUser() {
-    if (!form.name || !form.email || !form.password) {
-      toast({ title: 'Missing fields', description: 'Name, email, and password are required', variant: 'destructive' });
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const res = await request(`${API}/tenant/users`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        toast({ title: 'User created', description: `${form.name} has been added to your institution` });
-        setShowAdd(false);
-        setForm({ name: '', email: '', role: 'tenant_user', password: '' });
-        load();
-      } else {
-        toast({ title: 'Error', description: data.message, variant: 'destructive' });
-      }
-    } finally { setSubmitting(false); }
+  async function invite(e: React.FormEvent) {
+    e.preventDefault(); setSaving(true); setError('');
+    const res = await request(`${API}/tenant/team/invite`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...form, roleId: form.roleId || null }),
+    });
+    setSaving(false);
+    const body = await res.json();
+    if (!res.ok) { setError(body.message ?? 'Invite failed'); return; }
+    setTempPassword(body.tempPassword); setForm({ name: '', email: '', role: 'tenant_user', roleId: '' });
+    load();
   }
 
-  async function updateUser() {
-    if (!editUser) return;
-    setSubmitting(true);
-    try {
-      const res = await request(`${API}/tenant/users/${editUser.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editUser.name, role: editUser.role, status: editUser.status }),
-      });
-      if (res.ok) {
-        toast({ title: 'User updated' });
-        setEditUser(null);
-        load();
-      }
-    } finally { setSubmitting(false); }
+  async function update(id: string, patch: any) {
+    const res = await request(`${API}/tenant/team/${id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
+    });
+    if (res.ok) load(); else alert((await res.json()).message ?? 'Update failed');
   }
 
-  async function deleteUser(id: string, name: string) {
-    if (!confirm(`Remove ${name} from your institution?`)) return;
-    const res = await request(`${API}/tenant/users/${id}`, { method: 'DELETE' });
-    if (res.ok) { toast({ title: 'User removed' }); load(); }
-  }
-
-  const isAdmin = me?.role === 'tenant_admin';
+  if (!data) return <Layout><div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div></Layout>;
+  const { users, summary } = data;
+  const filtered = users.filter((u: any) => filter === 'all' || u.status === filter);
 
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-              <Users className="w-5 h-5 text-purple-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-display font-bold text-gray-900">User Management</h1>
-              <p className="text-sm text-muted-foreground">Manage loan officers, risk managers, and admins for your institution</p>
-            </div>
-          </div>
-          {isAdmin && (
-            <button onClick={() => setShowAdd(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-medium transition-colors text-sm">
-              <Plus className="w-4 h-4" />
-              Add User
+        <PageHeader icon={Users} tint="#6366F1" title="Users"
+          subtitle="People with access to your Social Score workspace"
+          actions={isAdmin && (
+            <button onClick={() => { setShowInvite(true); setTempPassword(null); setError(''); }}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">
+              <Plus className="w-4 h-4" /> Invite User
             </button>
-          )}
-        </div>
+          )} />
 
-        {/* Role guide */}
-        <div className="grid md:grid-cols-2 gap-3">
-          {Object.entries(roleConfig).map(([role, cfg]) => (
-            <div key={role} className={cn('p-4 rounded-xl border border-slate-200', cfg.bg)}>
-              <div className="flex items-center gap-2 mb-1">
-                <cfg.icon className={cn('w-4 h-4', cfg.color)} />
-                <span className={cn('text-sm font-semibold', cfg.color)}>{cfg.label}</span>
-              </div>
-              <p className="text-xs text-muted-foreground">{cfg.description}</p>
-            </div>
+        <KpiGrid items={[
+          { label: 'Total Users', value: summary.total, icon: Users, tint: '#4F6EF7' },
+          { label: 'Active', value: summary.active, icon: UserCheck, tint: '#10B981' },
+          { label: 'Pending Invites', value: summary.invited, icon: MailPlus, tint: '#F59E0B' },
+          { label: 'Suspended', value: summary.suspended, icon: UserX, tint: summary.suspended ? '#EF4444' : '#94A3B8' },
+          { label: 'MFA Coverage', value: summary.total ? `${Math.round((summary.mfa / summary.total) * 100)}%` : '—', icon: ShieldCheck,
+            tint: summary.mfa === summary.total ? '#10B981' : '#F59E0B', sub: summary.dormant ? `${summary.dormant} dormant 60d+` : 'no dormant accounts' },
+        ]} />
+
+        <div className="flex gap-2 flex-wrap">
+          {['all', 'active', 'invited', 'suspended'].map(f => (
+            <button key={f} onClick={() => setFilter(f)}
+              className={cn('px-4 py-1.5 rounded-full text-sm font-medium capitalize transition-all border',
+                filter === f ? 'bg-blue-500/15 text-blue-600 border-blue-500/30' : 'bg-white text-muted-foreground border-slate-200 hover:bg-slate-50')}>{f}</button>
           ))}
         </div>
 
-        {/* Users list */}
-        <div className="rounded-xl bg-slate-50 border border-slate-200 overflow-hidden">
-          <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">Team Members ({users.length})</h3>
-          </div>
-          {loading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {users.map(u => {
-                const role = roleConfig[u.role];
-                const RoleIcon = role?.icon || Eye;
-                const status = statusConfig[u.status as keyof typeof statusConfig] || statusConfig.active;
-                return (
-                  <motion.div key={u.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                    className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-600/30 border border-slate-200 flex items-center justify-center">
-                        <span className="text-sm font-bold text-gray-900">{u.name.charAt(0).toUpperCase()}</span>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-gray-900">{u.name}</p>
-                          {u.email === me?.email && <span className="text-xs px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">You</span>}
-                        </div>
-                        <p className="text-sm text-muted-foreground">{u.email}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {role && (
-                        <div className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium', role.bg, role.color)}>
-                          <RoleIcon className="w-3 h-3" />
-                          {role.label}
-                        </div>
-                      )}
-                      <div className={cn('flex items-center gap-1.5 px-2 py-1 rounded-full text-xs', status.bg, status.color)}>
-                        <span className={cn('w-1.5 h-1.5 rounded-full', status.dot)} />
-                        {u.status}
-                      </div>
-                      {isAdmin && u.email !== me?.email && (
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => setEditUser(u)} className="p-1.5 rounded-lg text-muted-foreground hover:text-gray-900 hover:bg-slate-100 transition-colors">
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => deleteUser(u.id, u.name)} className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <Panel title="Workspace Users">
+          <Table head={['User', 'System Role', 'Bureau Role', 'MFA', 'Last Login', 'Status', '']}>
+            {filtered.map((u: any) => (
+              <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
+                <Td>
+                  <p className="font-semibold text-gray-900">{u.name}{u.id === me?.id && <span className="ml-2 text-[10px] text-blue-500 font-bold">YOU</span>}</p>
+                  <p className="text-xs text-muted-foreground">{u.email}</p>
+                </Td>
+                <Td><Badge tone={u.role === 'tenant_admin' ? 'blue' : 'slate'}>{u.role.replace('_', ' ')}</Badge></Td>
+                <Td className="text-muted-foreground">{u.roleName ?? '—'}</Td>
+                <Td>
+                  <button onClick={() => isAdmin && update(u.id, { mfaEnabled: !u.mfaEnabled })} disabled={!isAdmin}
+                    className={cn('inline-flex items-center gap-1 text-xs font-medium', u.mfaEnabled ? 'text-emerald-600' : 'text-amber-600', !isAdmin && 'cursor-default')}>
+                    {u.mfaEnabled ? <><ShieldCheck className="w-3.5 h-3.5" /> Enabled</> : <><ShieldOff className="w-3.5 h-3.5" /> Off</>}
+                  </button>
+                </Td>
+                <Td className={cn('text-muted-foreground', !u.lastLoginAt && 'text-amber-600')}>
+                  <span className="inline-flex items-center gap-1.5">{!u.lastLoginAt && <Clock3 className="w-3.5 h-3.5" />}{ago(u.lastLoginAt)}</span>
+                </Td>
+                <Td><Badge tone={statusTone[u.status]}>{u.status}</Badge></Td>
+                <Td>
+                  {isAdmin && u.id !== me?.id && (u.status === 'suspended'
+                    ? <button onClick={() => update(u.id, { status: 'active' })} className="text-xs font-medium text-emerald-600 hover:underline">Reactivate</button>
+                    : <button onClick={() => update(u.id, { status: 'suspended' })} className="text-xs font-medium text-rose-600 hover:underline">Suspend</button>)}
+                </Td>
+              </tr>
+            ))}
+            {filtered.length === 0 && <tr><Td colSpan={7} className="text-center text-muted-foreground py-8">No users match this filter.</Td></tr>}
+          </Table>
+          {!isAdmin && <p className="px-5 py-3 text-xs text-muted-foreground border-t border-slate-100">Only tenant admins can invite users or change access.</p>}
+        </Panel>
       </div>
 
-      {/* Add User Modal */}
-      {showAdd && (
-        <Modal title="Add Team Member" onClose={() => setShowAdd(false)}>
+      <Modal open={showInvite} onClose={() => setShowInvite(false)} title="Invite User"
+        subtitle="The user signs in with a temporary password and is activated on first login">
+        {tempPassword ? (
           <div className="space-y-4">
-            {[
-              { key: 'name', label: 'Full Name', placeholder: 'Jane Banda', type: 'text' },
-              { key: 'email', label: 'Email Address', placeholder: 'jane@yourbank.co.zm', type: 'email' },
-              { key: 'password', label: 'Temporary Password', placeholder: 'Set a password', type: 'password' },
-            ].map(({ key, label, placeholder, type }) => (
-              <div key={key}>
-                <label className="block text-sm font-medium text-muted-foreground mb-1.5">{label}</label>
-                <input type={type} value={(form as any)[key]} placeholder={placeholder}
-                  onChange={e => setForm(prev => ({ ...prev, [key]: e.target.value }))}
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-gray-900 placeholder:text-muted-foreground/50 focus:outline-none focus:border-cyan-500 text-sm"
-                />
-              </div>
-            ))}
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Role</label>
-              <div className="grid grid-cols-2 gap-2">
-                {Object.entries(roleConfig).map(([role, cfg]) => (
-                  <button key={role} onClick={() => setForm(prev => ({ ...prev, role }))}
-                    className={cn('p-3 rounded-xl border text-left transition-all', form.role === role ? 'border-cyan-500 bg-cyan-500/10' : 'border-slate-200 bg-slate-50 hover:bg-slate-100')}>
-                    <p className={cn('text-sm font-medium', cfg.color)}>{cfg.label}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{cfg.description}</p>
-                  </button>
-                ))}
-              </div>
+            <div className="px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
+              Invitation created. Share this temporary password securely — it is shown only once:
+            </div>
+            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 font-mono text-sm text-gray-900">
+              <span className="flex-1">{tempPassword}</span>
+              <button onClick={() => navigator.clipboard?.writeText(tempPassword)} className="text-gray-400 hover:text-gray-700"><Copy className="w-4 h-4" /></button>
+            </div>
+            <button onClick={() => setShowInvite(false)} className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold">Done</button>
+          </div>
+        ) : (
+          <form onSubmit={invite} className="space-y-4">
+            {error && <div className="px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm">{error}</div>}
+            <Field label="Full Name"><input required className={inputCls} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></Field>
+            <Field label="Email Address"><input required type="email" className={inputCls} value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></Field>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="System Role">
+                <select className={inputCls} value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
+                  <option value="tenant_user">Tenant User</option>
+                  <option value="tenant_admin">Tenant Admin</option>
+                </select>
+              </Field>
+              <Field label="Bureau Role" hint="optional">
+                <select className={inputCls} value={form.roleId} onChange={e => setForm(f => ({ ...f, roleId: e.target.value }))}>
+                  <option value="">—</option>
+                  {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+              </Field>
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setShowAdd(false)} className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 text-gray-900 text-sm font-medium hover:bg-slate-100 transition-colors">Cancel</button>
-              <button onClick={addUser} disabled={submitting} className="flex-1 px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                <Check className="w-4 h-4" />
-                {submitting ? 'Creating…' : 'Create User'}
+              <button type="button" onClick={() => setShowInvite(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-gray-700 hover:bg-slate-50">Cancel</button>
+              <button type="submit" disabled={saving} className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
+                {saving && <Loader2 className="w-4 h-4 animate-spin" />} Send Invite
               </button>
             </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Edit User Modal */}
-      {editUser && (
-        <Modal title="Edit User" onClose={() => setEditUser(null)}>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Full Name</label>
-              <input type="text" value={editUser.name}
-                onChange={e => setEditUser(prev => prev ? { ...prev, name: e.target.value } : null)}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-gray-900 focus:outline-none focus:border-cyan-500 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Role</label>
-              <div className="grid grid-cols-2 gap-2">
-                {Object.entries(roleConfig).map(([role, cfg]) => (
-                  <button key={role} onClick={() => setEditUser(prev => prev ? { ...prev, role } : null)}
-                    className={cn('p-3 rounded-xl border text-left transition-all', editUser.role === role ? 'border-cyan-500 bg-cyan-500/10' : 'border-slate-200 bg-slate-50')}>
-                    <p className={cn('text-sm font-medium', cfg.color)}>{cfg.label}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Status</label>
-              <select value={editUser.status} onChange={e => setEditUser(prev => prev ? { ...prev, status: e.target.value } : null)}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-gray-900 focus:outline-none focus:border-cyan-500 text-sm">
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="suspended">Suspended</option>
-              </select>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button onClick={() => setEditUser(null)} className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 text-gray-900 text-sm font-medium">Cancel</button>
-              <button onClick={updateUser} disabled={submitting} className="flex-1 px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-medium disabled:opacity-50">
-                {submitting ? 'Saving…' : 'Save Changes'}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
+          </form>
+        )}
+      </Modal>
     </Layout>
   );
 }

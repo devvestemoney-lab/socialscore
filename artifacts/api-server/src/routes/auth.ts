@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, tenantsTable } from "@workspace/db";
+import { db, usersTable, tenantsTable, loginEventsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { hashPassword, comparePassword, signToken } from "../lib/auth.js";
 import { requireAuth, type AuthRequest } from "../middlewares/auth.js";
@@ -13,14 +13,24 @@ router.post("/login", async (req, res) => {
     return;
   }
   const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+  const audit = (outcome: "success" | "bad_credentials" | "inactive_account") =>
+    db.insert(loginEventsTable).values({
+      tenantId: user?.tenantId ?? null, userId: user?.id ?? null, email,
+      outcome, ipAddress: req.ip ?? null,
+      userAgent: req.headers["user-agent"]?.slice(0, 250) ?? null,
+    }).catch(() => undefined);
+
   if (!user || !comparePassword(password, user.passwordHash)) {
+    await audit("bad_credentials");
     res.status(401).json({ error: "Unauthorized", message: "Invalid credentials" });
     return;
   }
   if (!user.isActive) {
+    await audit("inactive_account");
     res.status(403).json({ error: "Forbidden", message: "Account is inactive" });
     return;
   }
+  await audit("success");
 
   let tenantName: string | null = null;
   if (user.tenantId) {
