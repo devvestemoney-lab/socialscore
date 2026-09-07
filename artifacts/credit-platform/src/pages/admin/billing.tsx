@@ -1,162 +1,150 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Layout } from '@/components/layout';
+import { PageHeader, KpiGrid, Panel, Badge, Table, Td, Modal } from '@/components/admin/page-kit';
 import { useAuth } from '@/hooks/use-auth';
-import { motion } from 'framer-motion';
-import { DollarSign, TrendingUp, AlertCircle, Download, CreditCard, Building, CheckCircle2, Clock } from 'lucide-react';
+import { Receipt, Wallet, AlertTriangle, CheckCircle2, FileText, Play, Loader2, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const API = import.meta.env.BASE_URL.replace(/\/$/, '') + '/api';
-
-const planColors: Record<string, string> = { Enterprise: '#8b5cf6', Professional: '#06b6d4', Starter: '#10b981' };
-const statusColors: Record<string, string> = { paid: '#10b981', outstanding: '#f59e0b', 'no-charges': '#6b7280' };
+const money = (v: number | string) => `K${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+const statusTone: Record<string, string> = { paid: 'green', issued: 'blue', overdue: 'red', draft: 'slate', void: 'slate' };
+const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
+const fmtPeriod = (p: string) => new Date(p + '-01').toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
 
 export default function Billing() {
   const { request } = useAuth();
   const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState('all');
+  const [detail, setDetail] = useState<any>(null);
+  const [generating, setGenerating] = useState(false);
+  const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    request(`${API}/admin/billing`).then(r => r.json()).then(d => { setData(d); setLoading(false); });
-  }, []);
+  async function load(st = status) {
+    const res = await request(`${API}/admin/invoices${st !== 'all' ? `?status=${st}` : ''}`);
+    setData(await res.json());
+  }
+  useEffect(() => { load('all'); }, []);
 
-  if (loading) return <Layout><div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" /></div></Layout>;
+  async function generate() {
+    setGenerating(true); setMessage('');
+    const period = new Date().toISOString().slice(0, 7);
+    const res = await request(`${API}/admin/invoices/generate`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ period }),
+    });
+    const body = await res.json();
+    setGenerating(false);
+    setMessage(res.ok
+      ? `${body.created} invoice(s) generated for ${fmtPeriod(period)}${body.skipped ? `, ${body.skipped} already existed` : ''}.`
+      : body.message ?? 'Generation failed');
+    load();
+  }
 
-  const { summary, tenants } = data;
+  async function setInvoiceStatus(id: string, newStatus: string) {
+    await request(`${API}/admin/invoices/${id}/status`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus }),
+    });
+    setDetail(null); load();
+  }
 
-  const chartData = (tenants || []).slice(0, 8).map((t: any) => ({
-    name: t.tenantName.split(' ')[0],
-    revenue: t.monthRevenue,
-    calls: t.monthCalls,
-  }));
+  if (!data) return <Layout><div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div></Layout>;
+  const { invoices, summary } = data;
+  const inv = detail;
 
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-green-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-display font-bold text-gray-900">Billing & Revenue</h1>
-              <p className="text-sm text-muted-foreground">API usage billing, invoices, and revenue tracking</p>
-            </div>
-          </div>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-100 text-gray-900 text-sm font-medium transition-colors">
-            <Download className="w-4 h-4" />
-            Export Report
-          </button>
-        </div>
+        <PageHeader icon={Receipt} tint="#10B981" title="Billing & Invoices"
+          subtitle="Invoices generated from metered usage across all tenants"
+          actions={
+            <button onClick={generate} disabled={generating}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-60">
+              {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />} Generate This Month
+            </button>
+          } />
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: 'Month Revenue', value: `ZMW ${summary.totalMonthRevenue.toFixed(2)}`, icon: TrendingUp, color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
-            { label: 'All-Time Revenue', value: `ZMW ${summary.totalAllTimeRevenue.toFixed(2)}`, icon: DollarSign, color: 'text-green-400', bg: 'bg-green-500/10' },
-            { label: 'Outstanding', value: `ZMW ${summary.outstandingRevenue.toFixed(2)}`, icon: AlertCircle, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
-            { label: 'Billed Tenants', value: summary.activeBilledTenants, icon: Building, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-          ].map(({ label, value, icon: Icon, color, bg }) => (
-            <motion.div key={label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-              className="p-5 rounded-xl bg-slate-50 border border-slate-200">
-              <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center mb-3', bg)}>
-                <Icon className={cn('w-5 h-5', color)} />
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{value}</p>
-              <p className="text-sm text-muted-foreground mt-1">{label}</p>
-            </motion.div>
+        {message && <div className="px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm">{message}</div>}
+
+        <KpiGrid items={[
+          { label: 'Collected', value: money(summary.paid), icon: CheckCircle2, tint: '#10B981', sub: 'all time' },
+          { label: 'Outstanding', value: money(summary.issued), icon: Wallet, tint: '#F59E0B', sub: `${summary.unpaidCount} unpaid invoice(s)` },
+          { label: 'Overdue', value: money(summary.overdue), icon: AlertTriangle, tint: summary.overdue > 0 ? '#EF4444' : '#94A3B8' },
+          { label: 'Invoices Issued', value: summary.count, icon: FileText, tint: '#4F6EF7' },
+        ]} />
+
+        <div className="flex gap-2 flex-wrap">
+          {['all', 'issued', 'paid', 'overdue', 'draft'].map(f => (
+            <button key={f} onClick={() => { setStatus(f); load(f); }}
+              className={cn('px-4 py-1.5 rounded-full text-sm font-medium capitalize transition-all border',
+                status === f ? 'bg-blue-500/15 text-blue-600 border-blue-500/30' : 'bg-white text-muted-foreground border-slate-200 hover:bg-slate-50')}>{f}</button>
           ))}
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Revenue Chart */}
-          <div className="p-6 rounded-xl bg-slate-50 border border-slate-200">
-            <h3 className="font-semibold text-gray-900 mb-4">Monthly Revenue by Tenant</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chartData}>
-                <XAxis dataKey="name" stroke="#6b7280" tick={{ fill: '#9ca3af', fontSize: 11 }} />
-                <YAxis stroke="#6b7280" tick={{ fill: '#9ca3af', fontSize: 11 }} />
-                <Tooltip contentStyle={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
-                  formatter={(v: any) => [`ZMW ${v}`, 'Revenue']} />
-                <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
-                  {chartData.map((_: any, i: number) => <Cell key={i} fill={i === 0 ? '#06b6d4' : '#3b82f6'} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Pricing info */}
-          <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
-            <h3 className="font-semibold text-gray-900">Pricing Plans</h3>
-            {[
-              { plan: 'Starter', calls: 'Up to 100 calls/month', price: `ZMW ${summary.pricePerCall}/call`, included: 0, features: ['Basic credit score', 'Email support'] },
-              { plan: 'Professional', calls: '100–500 calls/month', price: `ZMW ${summary.pricePerCall}/call`, included: 100, features: ['Full risk profile', 'Loan exposure', 'Priority support'] },
-              { plan: 'Enterprise', calls: '500+ calls/month', price: 'Custom pricing', included: 500, features: ['Bulk queries', 'Custom models', 'Dedicated SLA', 'API analytics'] },
-            ].map(({ plan, calls, price, features }) => (
-              <div key={plan} className="p-4 rounded-lg bg-slate-50 border border-slate-200">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: planColors[plan] }} />
-                    <span className="font-medium text-gray-900">{plan}</span>
-                  </div>
-                  <span className="text-sm font-semibold" style={{ color: planColors[plan] }}>{price}</span>
-                </div>
-                <p className="text-xs text-muted-foreground mb-2">{calls}</p>
-                <div className="flex flex-wrap gap-1">
-                  {features.map(f => <span key={f} className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-muted-foreground">{f}</span>)}
-                </div>
-              </div>
+        <Panel title="Invoice Register" subtitle="Click an invoice to view its line items">
+          <Table head={['Reference', 'Tenant', 'Period', 'Subscription', 'Overage', 'Add-ons', 'Total', 'Due', 'Status']}>
+            {invoices.map((i: any) => (
+              <tr key={i.id} onClick={() => setDetail(i)} className="hover:bg-blue-50/40 transition-colors cursor-pointer">
+                <Td className="font-mono text-xs text-blue-600">{i.reference}</Td>
+                <Td className="font-semibold text-gray-900">{i.tenantName}</Td>
+                <Td className="text-muted-foreground">{fmtPeriod(i.period)}</Td>
+                <Td className="text-muted-foreground">{money(i.subscriptionAmount)}</Td>
+                <Td className={Number(i.overageAmount) > 0 ? 'text-violet-600 font-medium' : 'text-muted-foreground'}>{Number(i.overageAmount) > 0 ? money(i.overageAmount) : '—'}</Td>
+                <Td className="text-muted-foreground">{Number(i.addonsAmount) > 0 ? money(i.addonsAmount) : '—'}</Td>
+                <Td className="font-bold text-gray-900">{money(i.total)}</Td>
+                <Td className={i.status === 'overdue' ? 'text-rose-600 font-semibold' : 'text-muted-foreground'}>{fmtDate(i.dueAt)}</Td>
+                <Td><Badge tone={statusTone[i.status]}>{i.status}</Badge></Td>
+              </tr>
             ))}
-          </div>
-        </div>
+            {invoices.length === 0 && <tr><Td colSpan={9} className="text-center text-muted-foreground py-8">No invoices for this filter.</Td></tr>}
+          </Table>
+        </Panel>
+      </div>
 
-        {/* Tenant Billing Table */}
-        <div className="rounded-xl bg-slate-50 border border-slate-200 overflow-hidden">
-          <div className="p-4 border-b border-slate-200">
-            <h3 className="font-semibold text-gray-900">Tenant Invoices — This Month</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  {['Tenant', 'Type', 'Plan', 'API Calls', 'Revenue (ZMW)', 'Invoice Status', 'Last Activity'].map(h => (
-                    <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {(tenants || []).map((t: any) => (
-                  <tr key={t.tenantId} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center">
-                          <Building className="w-3.5 h-3.5 text-muted-foreground" />
-                        </div>
-                        <span className="text-sm font-medium text-gray-900">{t.tenantName}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-muted-foreground capitalize">{t.tenantType}</td>
-                    <td className="py-3 px-4">
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: `${planColors[t.plan]}20`, color: planColors[t.plan] }}>{t.plan}</span>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-900 font-medium">{t.monthCalls}</td>
-                    <td className="py-3 px-4 text-sm text-gray-900 font-semibold">{t.monthRevenue.toFixed(2)}</td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-1.5">
-                        {t.invoiceStatus === 'paid' ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400" /> : t.invoiceStatus === 'outstanding' ? <Clock className="w-3.5 h-3.5 text-yellow-400" /> : <span className="w-3.5 h-3.5" />}
-                        <span className="text-xs font-medium capitalize" style={{ color: statusColors[t.invoiceStatus] }}>{t.invoiceStatus.replace('-', ' ')}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-xs text-muted-foreground">
-                      {t.lastActivity ? new Date(t.lastActivity).toLocaleDateString() : '—'}
-                    </td>
+      <Modal open={!!detail} onClose={() => setDetail(null)} wide
+        title={inv ? inv.reference : ''} subtitle={inv ? `${inv.tenantName} · ${fmtPeriod(inv.period)}` : undefined}>
+        {inv && (
+          <div className="space-y-5">
+            <div className="flex items-center justify-between">
+              <Badge tone={statusTone[inv.status]}>{inv.status}</Badge>
+              <p className="text-sm text-muted-foreground">Issued {fmtDate(inv.issuedAt)} · due {fmtDate(inv.dueAt)}{inv.paidAt ? ` · paid ${fmtDate(inv.paidAt)}` : ''}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 overflow-hidden">
+              <Table head={['Line item', 'Qty', 'Rate', 'Amount']}>
+                {(inv.lineItems ?? []).map((li: any, i: number) => (
+                  <tr key={i}>
+                    <Td className="font-medium text-gray-900">{li.label}</Td>
+                    <Td className="text-muted-foreground">{li.qty}</Td>
+                    <Td className="text-muted-foreground">{li.rate ? money(li.rate) : '—'}</Td>
+                    <Td className={cn('font-semibold', li.amount < 0 ? 'text-emerald-600' : 'text-gray-900')}>{money(li.amount)}</Td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
+              </Table>
+              <div className="flex items-center justify-between px-5 py-3 border-t border-slate-200 bg-slate-50">
+                <span className="text-sm font-semibold text-gray-900">Total due</span>
+                <span className="text-lg font-display font-bold text-gray-900">{money(inv.total)}</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {inv.status !== 'paid' && (
+                <button onClick={() => setInvoiceStatus(inv.id, 'paid')}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold">
+                  <CheckCircle2 className="w-4 h-4" /> Mark Paid
+                </button>
+              )}
+              {inv.status === 'issued' && (
+                <button onClick={() => setInvoiceStatus(inv.id, 'overdue')}
+                  className="px-4 py-2.5 rounded-xl border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-semibold">Flag Overdue</button>
+              )}
+              {inv.status !== 'void' && (
+                <button onClick={() => confirm('Void this invoice?') && setInvoiceStatus(inv.id, 'void')}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-gray-700 hover:bg-slate-50 text-sm font-semibold">Void</button>
+              )}
+              <button onClick={() => window.print()} className="ml-auto flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-gray-700 hover:bg-slate-50 text-sm font-semibold">
+                <Download className="w-4 h-4" /> Print
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
+        )}
+      </Modal>
     </Layout>
   );
 }
