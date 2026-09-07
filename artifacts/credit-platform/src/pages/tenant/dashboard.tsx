@@ -3,11 +3,12 @@ import { Layout } from '@/components/layout';
 import { useAuth } from '@/hooks/use-auth';
 import { useGetRiskProfile } from '@workspace/api-client-react';
 import {
-  Search, ShieldAlert, Sparkles, Building, AlertCircle,
-  CheckCircle, XCircle, ClockIcon, TrendingUp, BarChart3,
-  Briefcase, Brain, ChevronRight
+  Search, ShieldAlert, Sparkles, AlertCircle, CheckCircle, XCircle,
+  ClockIcon, TrendingUp, BarChart3, Briefcase, Brain, Fingerprint,
+  Phone, MapPin, Star, Eye, Download, Loader2, Wallet,
 } from 'lucide-react';
 import { CreditGauge } from '@/components/credit-gauge';
+import { Panel, Badge, Table, Td, Field, inputCls } from '@/components/admin/page-kit';
 import { formatCurrency, cn } from '@/lib/utils';
 import { ResponsiveContainer, AreaChart, Area, XAxis, Tooltip, YAxis } from 'recharts';
 import { format } from 'date-fns';
@@ -15,23 +16,21 @@ import { format } from 'date-fns';
 type Tab = 'overview' | 'breakdown' | 'loans' | 'decision';
 
 const SCORE_COMPONENTS = [
-  { key: 'repaymentHistory', label: 'Repayment History', max: 300, color: '#06b6d4', description: 'Track record of on-time payments across all facilities' },
-  { key: 'transactionPatterns', label: 'Transaction Patterns', max: 250, color: '#8b5cf6', description: 'Consistency and regularity of financial activity' },
-  { key: 'loanDefaults', label: 'Loan Defaults', max: 200, color: '#f59e0b', description: 'Historical default events and write-offs' },
-  { key: 'mobileMoney', label: 'Mobile Money', max: 150, color: '#10b981', description: 'Mobile money usage and activity patterns' },
-  { key: 'accountAge', label: 'Account Age', max: 100, color: '#3b82f6', description: 'Length of credit history and account tenure' },
+  { key: 'repaymentHistory', label: 'Repayment History', max: 300, color: '#4F6EF7', description: 'On-time payments across all facilities' },
+  { key: 'transactionPatterns', label: 'Transaction Patterns', max: 250, color: '#8B5CF6', description: 'Consistency of financial activity' },
+  { key: 'loanDefaults', label: 'Loan Defaults', max: 200, color: '#F59E0B', description: 'Historical defaults and write-offs' },
+  { key: 'mobileMoney', label: 'Mobile Money', max: 150, color: '#10B981', description: 'Wallet usage and repayment behaviour' },
+  { key: 'accountAge', label: 'Account Age', max: 100, color: '#14B8A6', description: 'Length of credit history' },
 ] as const;
 
-const LOAN_STATUS_COLORS: Record<string, string> = {
-  active: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
-  defaulted: 'text-red-400 bg-red-400/10 border-red-400/20',
-  closed: 'text-gray-400 bg-slate-50 border-slate-200',
-  overdue: 'text-orange-400 bg-orange-400/10 border-orange-400/20',
-};
+const LOAN_TONE: Record<string, string> = { active: 'green', defaulted: 'red', closed: 'slate', overdue: 'amber', written_off: 'red' };
+const RISK_TONE: Record<string, string> = { Low: 'green', Medium: 'amber', High: 'amber', 'Very High': 'red', Critical: 'red' };
+const PURPOSES = ['Loan origination', 'Credit review', 'Account opening', 'Credit limit increase', 'Collections'];
 
 export default function TenantDashboard() {
   const { apiOptions } = useAuth();
-  const [nrc, setNrc] = useState('12/345678/67');
+  const [nrc, setNrc] = useState('123456/78/1');
+  const [purpose, setPurpose] = useState(PURPOSES[0]);
   const [searchNrc, setSearchNrc] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [loanAmount, setLoanAmount] = useState('50000');
@@ -39,563 +38,410 @@ export default function TenantDashboard() {
 
   const { data, isLoading, error } = useGetRiskProfile(searchNrc, {
     request: apiOptions.request,
-    query: { enabled: !!searchNrc, retry: false } as any
+    query: { enabled: !!searchNrc, retry: false } as any,
   });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (nrc.trim()) {
-      setSearchNrc(nrc.trim());
-      setActiveTab('overview');
-    }
+    if (nrc.trim()) { setSearchNrc(nrc.trim()); setActiveTab('overview'); }
   };
 
   const scoreBreakdown = data?.creditScore?.scoreBreakdown;
   const loans = data?.loanExposure?.loans ?? [];
-
-  // Decision engine logic
   const score = data?.creditScore?.score ?? 0;
+
   const getDecision = () => {
     const amount = parseFloat(loanAmount) || 0;
     const limit = data?.recommendedCreditLimit ?? 0;
-    if (score >= 700 && amount <= limit) return { decision: 'approved', color: 'text-emerald-400', bg: 'bg-emerald-400/10 border-emerald-400/20', icon: CheckCircle, message: 'Loan application meets all credit criteria. Recommend approval with standard terms.' };
-    if (score >= 500 && amount <= limit * 1.2) return { decision: 'referred', color: 'text-yellow-400', bg: 'bg-yellow-400/10 border-yellow-400/20', icon: ClockIcon, message: 'Application requires manual review. Consider requesting additional collateral or guarantor.' };
-    return { decision: 'declined', color: 'text-red-400', bg: 'bg-red-400/10 border-red-400/20', icon: XCircle, message: 'Credit profile does not meet minimum lending criteria. High risk of default.' };
+    if (score >= 700 && amount <= limit) return { decision: 'Approved', tone: 'emerald', icon: CheckCircle, message: 'Loan application meets all credit criteria. Recommend approval with standard terms.' };
+    if (score >= 500 && amount <= limit * 1.2) return { decision: 'Refer', tone: 'amber', icon: ClockIcon, message: 'Application requires manual review. Consider requesting additional collateral or a guarantor.' };
+    return { decision: 'Declined', tone: 'rose', icon: XCircle, message: 'Credit profile does not meet minimum lending criteria — high risk of default.' };
   };
 
-  const riskColors: Record<string, string> = {
-    'Low': 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
-    'Medium': 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
-    'High': 'text-orange-400 bg-orange-400/10 border-orange-400/20',
-    'Very High': 'text-red-400 bg-red-400/10 border-red-400/20',
-    'Critical': 'text-rose-500 bg-rose-500/10 border-rose-500/20',
-  };
-
-  const tabs: { id: Tab; label: string; icon: React.ElementType; disabled?: boolean }[] = [
+  const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'breakdown', label: 'Score Breakdown', icon: TrendingUp },
     { id: 'loans', label: `Loan Portfolio (${loans.length})`, icon: Briefcase },
     { id: 'decision', label: 'Decision Engine', icon: Brain },
   ];
 
+  const initials = data ? `${data.customer.firstName[0] ?? ''}${data.customer.lastName[0] ?? ''}` : '';
+
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-display font-bold text-gray-900 mb-6">Credit Profile Lookup</h1>
-
-        {/* Search Bar */}
-        <form onSubmit={handleSearch} className="mb-8 relative group">
-          <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-          <div className="relative flex items-center bg-card border border-slate-200 rounded-2xl shadow-xl overflow-hidden focus-within:border-cyan-500 focus-within:ring-1 focus-within:ring-cyan-500 transition-all">
-            <div className="pl-6 text-gray-400">
-              <Search className="w-6 h-6" />
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#4F6EF71A' }}>
+              <Search className="w-5 h-5" style={{ color: '#4F6EF7' }} />
             </div>
-            <input
-              type="text"
-              value={nrc}
-              onChange={e => setNrc(e.target.value)}
-              placeholder="Enter Customer NRC (e.g. 12/345678/67)"
-              className="w-full bg-transparent border-none text-xl text-gray-900 placeholder:text-gray-400 px-6 py-5 focus:outline-none"
-            />
-            <button
-              type="submit"
-              className="bg-cyan-500 text-white font-bold h-full px-8 hover:bg-cyan-400 transition-colors whitespace-nowrap"
-            >
-              Analyze
-            </button>
+            <div>
+              <h1 className="text-2xl font-display font-bold text-gray-900">Credit Profile Lookup</h1>
+              <p className="text-sm text-muted-foreground">Pull a consumer's full bureau file — consent enforced, every pull metered</p>
+            </div>
           </div>
-        </form>
-
-        {/* Demo NRC Chips */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          <span className="text-xs text-gray-400 py-1 pr-2">Quick fill:</span>
-          {[
-            { nrc: '12/345678/67', label: 'Excellent' },
-            { nrc: '56/111222/78', label: 'Excellent' },
-            { nrc: '87/654321/32', label: 'Fair' },
-            { nrc: '90/333444/12', label: 'Fair' },
-            { nrc: '34/789012/45', label: 'Very Poor' },
-          ].map(item => (
-            <button
-              key={item.nrc}
-              onClick={() => { setNrc(item.nrc); setSearchNrc(item.nrc); setActiveTab('overview'); }}
-              className="px-3 py-1 rounded-full text-xs font-mono bg-slate-50 hover:bg-slate-100 text-gray-500 hover:text-gray-900 border border-slate-200 transition-colors"
-            >
-              {item.nrc} <span className="text-gray-400">({item.label})</span>
-            </button>
-          ))}
+          <span className="px-3.5 py-1.5 rounded-full bg-white border border-slate-200 text-xs text-gray-600">
+            <b className="text-gray-900">1,204</b> / 25,000 reports used this month
+          </span>
         </div>
 
+        {/* Search */}
+        <Panel padded>
+          <form onSubmit={handleSearch} className="grid md:grid-cols-12 gap-3 items-end">
+            <div className="md:col-span-6">
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Consumer NRC</label>
+              <div className="relative">
+                <Fingerprint className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input value={nrc} onChange={e => setNrc(e.target.value)} placeholder="e.g. 123456/78/1"
+                  className={inputCls + ' pl-10 font-mono'} />
+              </div>
+            </div>
+            <div className="md:col-span-4">
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5">Purpose of Inquiry</label>
+              <select className={inputCls} value={purpose} onChange={e => setPurpose(e.target.value)}>
+                {PURPOSES.map(p => <option key={p}>{p}</option>)}
+              </select>
+            </div>
+            <button type="submit"
+              className="md:col-span-2 flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-colors">
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} Analyze
+            </button>
+          </form>
+          <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-slate-100">
+            <span className="text-xs text-gray-400">Quick fill:</span>
+            {[
+              { nrc: '123456/78/1', label: 'Excellent', tone: 'green' },
+              { nrc: '111222/56/1', label: 'Excellent', tone: 'green' },
+              { nrc: '654321/87/1', label: 'Fair', tone: 'amber' },
+              { nrc: '333444/90/1', label: 'Fair', tone: 'amber' },
+              { nrc: '789012/34/1', label: 'Very Poor', tone: 'red' },
+            ].map(item => (
+              <button key={item.nrc} onClick={() => { setNrc(item.nrc); setSearchNrc(item.nrc); setActiveTab('overview'); }}
+                className="group flex items-center gap-1.5 px-3 py-1 rounded-full text-xs bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition-colors">
+                <span className="font-mono text-gray-700 group-hover:text-blue-700">{item.nrc}</span>
+                <span className={cn('w-1.5 h-1.5 rounded-full', item.tone === 'green' ? 'bg-emerald-400' : item.tone === 'amber' ? 'bg-amber-400' : 'bg-rose-400')} />
+              </button>
+            ))}
+          </div>
+        </Panel>
+
         {isLoading && (
-          <div className="flex flex-col items-center justify-center py-20 text-cyan-400 gap-4">
-            <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-            <p className="font-medium animate-pulse text-lg">Running AI risk models...</p>
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">Running risk models…</p>
           </div>
         )}
 
         {error && !isLoading && (
-          <div className="glass-panel p-8 rounded-2xl flex flex-col items-center text-center">
-            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
-              <AlertCircle className="w-8 h-8 text-red-500" />
+          <Panel padded>
+            <div className="flex flex-col items-center text-center py-8">
+              <div className="w-14 h-14 bg-rose-500/10 rounded-2xl flex items-center justify-center mb-4">
+                <AlertCircle className="w-7 h-7 text-rose-500" />
+              </div>
+              <h3 className="text-lg font-display font-bold text-gray-900 mb-1">Profile Not Found</h3>
+              <p className="text-sm text-muted-foreground max-w-md">
+                No credit history for NRC <span className="font-mono text-gray-900">{searchNrc}</span>.
+                Confirm the number, or check that the consumer has granted consent.
+              </p>
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Profile Not Found</h3>
-            <p className="text-muted-foreground">Could not locate credit history for NRC <span className="font-mono text-gray-900">{searchNrc}</span>. Ensure the customer has granted consent.</p>
-          </div>
+          </Panel>
         )}
 
         {data && !isLoading && (
-          <div className="space-y-6 animate-in slide-in-from-bottom-8 duration-500">
-            {/* Customer Header */}
-            <div className="glass-panel p-6 rounded-2xl">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-1">
-                    {data.customer.firstName} {data.customer.lastName}
-                  </h2>
-                  <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mt-1">
-                    <span className="font-mono bg-slate-100 px-2 py-1 rounded text-xs">NRC: {data.nrc}</span>
-                    <span>{data.customer.phone}</span>
-                    <span>{data.customer.province}</span>
-                    {(data.customer as any).employer && <span>{(data.customer as any).employer}</span>}
+          <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
+            {/* ── Identity banner ── */}
+            <Panel padded>
+              <div className="flex flex-col lg:flex-row lg:items-center gap-5">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold text-white shrink-0"
+                    style={{ background: 'linear-gradient(135deg, #4F6EF7, #7C5CFC)' }}>
+                    {initials}
                   </div>
-                </div>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                  <div className="text-right">
-                    <p className="text-xs text-gray-400 mb-1 uppercase tracking-wider">Credit Limit</p>
-                    <p className="text-2xl font-bold text-cyan-400">{formatCurrency(data.recommendedCreditLimit)}</p>
-                  </div>
-                  <span className={cn(
-                    'px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide border',
-                    riskColors[data.riskLevel as string] ?? 'text-gray-400 bg-slate-50 border-slate-200'
-                  )}>
-                    {data.riskLevel} Risk
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Summary Score Bar */}
-            <div className="glass-panel rounded-2xl overflow-hidden">
-              <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-slate-100">
-                {[
-                  { label: 'Credit Score', value: data.creditScore.score, suffix: '/ 1000', color: 'text-cyan-400' },
-                  { label: 'Rating', value: data.creditScore.rating, color: 'text-gray-900' },
-                  { label: 'Prob. of Default', value: `${(data.creditScore.probabilityOfDefault * 100).toFixed(1)}%`, color: 'text-orange-400' },
-                  { label: 'Active Loans', value: data.loanExposure.activeLoans, color: 'text-blue-400' },
-                ].map((item, i) => (
-                  <div key={i} className="p-5 text-center">
-                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">{item.label}</p>
-                    <p className={`text-2xl font-display font-bold ${item.color}`}>
-                      {item.value}
-                      {item.suffix && <span className="text-sm text-gray-400 font-normal ml-1">{item.suffix}</span>}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex gap-1 p-1 glass-panel rounded-xl overflow-x-auto">
-              {tabs.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    'flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all',
-                    activeTab === tab.id
-                      ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
-                      : 'text-gray-500 hover:text-gray-900 hover:bg-slate-50'
-                  )}
-                >
-                  <tab.icon className="w-4 h-4" />
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab: Overview */}
-            {activeTab === 'overview' && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1 glass-panel p-6 rounded-2xl flex flex-col items-center justify-center">
-                  <CreditGauge score={data.creditScore.score} rating={data.creditScore.rating} />
-                  <div className="w-full mt-4 glass-panel p-4 rounded-xl bg-slate-100">
-                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">Score History</p>
-                    <div className="h-24">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data.creditScore.historicalScores ?? []}>
-                          <defs>
-                            <linearGradient id="scoreGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
-                              <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <XAxis dataKey="date" hide />
-                          <YAxis domain={['auto', 1000]} hide />
-                          <Tooltip
-                            contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px', fontSize: '12px' }}
-                            labelFormatter={v => format(new Date(v), 'MMM yyyy')}
-                          />
-                          <Area type="monotone" dataKey="score" stroke="#06b6d4" strokeWidth={2} fillOpacity={1} fill="url(#scoreGrad)" dot={false} />
-                        </AreaChart>
-                      </ResponsiveContainer>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <h2 className="text-xl font-display font-bold text-gray-900 truncate">
+                        {data.customer.firstName} {data.customer.lastName}
+                      </h2>
+                      <Badge tone={RISK_TONE[data.riskLevel as string] ?? 'slate'}>{data.riskLevel} risk</Badge>
+                      <Badge tone="blue">{data.creditScore.rating}</Badge>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-sm text-muted-foreground">
+                      <span className="inline-flex items-center gap-1.5"><Fingerprint className="w-3.5 h-3.5" /><span className="font-mono text-xs">{data.nrc}</span></span>
+                      <span className="inline-flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{data.customer.phone}</span>
+                      <span className="inline-flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{data.customer.province}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="lg:col-span-2 space-y-6">
-                  <div className="glass-panel p-6 rounded-2xl">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-purple-400" />
-                      AI Credit Assessment
-                    </h3>
-                    <p className="text-gray-700 leading-relaxed mb-5 bg-purple-500/5 border border-purple-500/10 p-4 rounded-xl text-sm">
-                      {data.aiInsights}
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {data.riskFactors.map((factor, i) => (
-                        <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                          <ShieldAlert className={cn('w-5 h-5 shrink-0 mt-0.5',
-                            factor.impact === 'positive' ? 'text-emerald-400' :
-                            factor.impact === 'negative' ? 'text-red-400' : 'text-yellow-400'
-                          )} />
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{factor.factor}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">{factor.description}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Loan Summary */}
-                  <div className="glass-panel p-6 rounded-2xl">
-                    <h3 className="text-base font-bold text-gray-900 mb-4">Exposure Summary</h3>
-                    <div className="grid grid-cols-3 gap-3 mb-4">
-                      {[
-                        { label: 'Active', value: data.loanExposure.activeLoans, color: 'text-emerald-400' },
-                        { label: 'Defaulted', value: data.loanExposure.defaultedLoans, color: 'text-red-400' },
-                        { label: 'Closed', value: data.loanExposure.closedLoans, color: 'text-gray-400' },
-                      ].map(item => (
-                        <div key={item.label} className="bg-slate-100 p-3 rounded-xl text-center border border-slate-200">
-                          <p className={`text-2xl font-bold font-mono ${item.color}`}>{item.value}</p>
-                          <p className="text-xs text-gray-400 mt-1">{item.label}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-between">
-                      <span className="text-sm text-red-200">Total Outstanding</span>
-                      <span className="text-lg font-bold text-red-400 font-mono">{formatCurrency(data.loanExposure.totalExposure)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Tab: Score Breakdown */}
-            {activeTab === 'breakdown' && scoreBreakdown && (
-              <div className="space-y-6">
-                <div className="glass-panel p-6 rounded-2xl">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900">Score Component Breakdown</h3>
-                      <p className="text-sm text-gray-500 mt-1">How each factor contributes to the total score of {data.creditScore.score}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-3xl font-display font-bold text-cyan-400">{data.creditScore.score}</p>
-                      <p className="text-xs text-gray-400">/ 1000 total</p>
-                    </div>
-                  </div>
-                  <div className="space-y-6">
-                    {SCORE_COMPONENTS.map(comp => {
-                      const value = scoreBreakdown[comp.key];
-                      const pct = Math.round((value / comp.max) * 100);
-                      const pctOfTotal = Math.round((comp.max / 1000) * 100);
-                      return (
-                        <div key={comp.key}>
-                          <div className="flex items-center justify-between mb-2">
-                            <div>
-                              <span className="text-sm font-medium text-gray-900">{comp.label}</span>
-                              <span className="text-xs text-gray-400 ml-2">({comp.description})</span>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-sm font-bold font-mono" style={{ color: comp.color }}>{value}</span>
-                              <span className="text-xs text-gray-400"> / {comp.max}</span>
-                            </div>
-                          </div>
-                          <div className="relative h-3 bg-slate-50 rounded-full overflow-hidden">
-                            <div
-                              className="absolute inset-y-0 left-0 rounded-full transition-all duration-1000"
-                              style={{ width: `${pct}%`, backgroundColor: comp.color, opacity: 0.9 }}
-                            />
-                          </div>
-                          <div className="flex justify-between mt-1">
-                            <span className="text-xs text-gray-400">{pct}% of max</span>
-                            <span className="text-xs text-gray-300">{pctOfTotal}% weight</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
-                  {SCORE_COMPONENTS.map(comp => {
-                    const value = scoreBreakdown[comp.key];
-                    const pct = Math.round((value / comp.max) * 100);
-                    return (
-                      <div key={comp.key} className="glass-panel p-4 rounded-2xl text-center relative overflow-hidden">
-                        <div
-                          className="absolute inset-x-0 bottom-0 h-1 rounded-b-2xl"
-                          style={{ backgroundColor: comp.color }}
-                        />
-                        <p className="text-xs text-gray-400 mb-2 leading-tight">{comp.label}</p>
-                        <p className="text-2xl font-bold font-mono" style={{ color: comp.color }}>{value}</p>
-                        <p className="text-xs text-gray-400 mt-1">{pct}%</p>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Recommendation Box */}
-                <div className="glass-panel p-6 rounded-2xl border border-cyan-500/10">
-                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">AI Score Recommendation</h4>
-                  <p className="text-gray-700 text-sm leading-relaxed">{data.creditScore.recommendation}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Tab: Loan Portfolio */}
-            {activeTab === 'loans' && (
-              <div className="glass-panel rounded-2xl overflow-hidden">
-                <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+                <div className="flex items-center gap-6 lg:border-l lg:border-slate-100 lg:pl-6">
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900">Individual Loan Records</h3>
-                    <p className="text-sm text-gray-400 mt-0.5">{loans.length} loan records across all institutions</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Recommended Limit</p>
+                    <p className="text-2xl font-display font-bold text-gray-900">{formatCurrency(data.recommendedCreditLimit)}</p>
                   </div>
-                  <div className="flex gap-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <button title="Save consumer" className="p-2.5 rounded-xl border border-slate-200 text-gray-500 hover:text-amber-500 hover:border-amber-300 transition-colors"><Star className="w-4 h-4" /></button>
+                    <button title="Add to watchlist" className="p-2.5 rounded-xl border border-slate-200 text-gray-500 hover:text-blue-600 hover:border-blue-300 transition-colors"><Eye className="w-4 h-4" /></button>
+                    <button title="Export report PDF" className="p-2.5 rounded-xl border border-slate-200 text-gray-500 hover:text-gray-900 transition-colors"><Download className="w-4 h-4" /></button>
+                  </div>
+                </div>
+              </div>
+            </Panel>
+
+            {/* ── Balanced two-column body ── */}
+            <div className="grid lg:grid-cols-3 gap-6 items-start">
+              {/* Left rail: score + exposure */}
+              <div className="space-y-6">
+                <Panel padded>
+                  <div className="flex flex-col items-center">
+                    <CreditGauge score={data.creditScore.score} rating={data.creditScore.rating} />
+                    <div className="grid grid-cols-2 gap-3 w-full mt-5">
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-center">
+                        <p className="text-[11px] uppercase tracking-wider text-gray-400">Prob. of Default</p>
+                        <p className={cn('text-lg font-bold mt-0.5', data.creditScore.probabilityOfDefault < 0.1 ? 'text-emerald-600' : data.creditScore.probabilityOfDefault < 0.3 ? 'text-amber-600' : 'text-rose-600')}>
+                          {(data.creditScore.probabilityOfDefault * 100).toFixed(1)}%
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-center">
+                        <p className="text-[11px] uppercase tracking-wider text-gray-400">Active Loans</p>
+                        <p className="text-lg font-bold text-gray-900 mt-0.5">{data.loanExposure.activeLoans}</p>
+                      </div>
+                    </div>
+                    <div className="w-full mt-5">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">12-Month Score Trend</p>
+                      <div className="h-20">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={data.creditScore.historicalScores ?? []}>
+                            <defs>
+                              <linearGradient id="scoreGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#4F6EF7" stopOpacity={0.25} />
+                                <stop offset="95%" stopColor="#4F6EF7" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <XAxis dataKey="date" hide />
+                            <YAxis domain={['auto', 1000]} hide />
+                            <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 12 }}
+                              labelFormatter={v => format(new Date(v), 'MMM yyyy')} />
+                            <Area type="monotone" dataKey="score" stroke="#4F6EF7" strokeWidth={2} fill="url(#scoreGrad)" dot={false} />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+                </Panel>
+
+                <Panel title="Exposure Snapshot" padded>
+                  <div className="grid grid-cols-3 gap-2.5 mb-4">
                     {[
-                      { label: 'Active', count: data.loanExposure.activeLoans, color: 'text-emerald-400' },
-                      { label: 'Defaulted', count: data.loanExposure.defaultedLoans, color: 'text-red-400' },
-                      { label: 'Closed', count: data.loanExposure.closedLoans, color: 'text-gray-400' },
-                    ].map(s => (
-                      <span key={s.label} className={`${s.color} bg-slate-50 px-2 py-1 rounded-lg`}>
-                        {s.count} {s.label}
-                      </span>
+                      { label: 'Active', value: data.loanExposure.activeLoans, cls: 'text-emerald-600' },
+                      { label: 'Defaulted', value: data.loanExposure.defaultedLoans, cls: 'text-rose-600' },
+                      { label: 'Closed', value: data.loanExposure.closedLoans, cls: 'text-gray-500' },
+                    ].map(i => (
+                      <div key={i.label} className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-center">
+                        <p className={cn('text-xl font-bold', i.cls)}>{i.value}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">{i.label}</p>
+                      </div>
                     ))}
                   </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse min-w-[900px]">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-xs text-gray-500 uppercase tracking-wider bg-slate-50">
-                        <th className="p-4 font-semibold">Institution</th>
-                        <th className="p-4 font-semibold">Type</th>
-                        <th className="p-4 font-semibold text-right">Principal</th>
-                        <th className="p-4 font-semibold text-right">Outstanding</th>
-                        <th className="p-4 font-semibold text-right">Rate</th>
-                        <th className="p-4 font-semibold">Disbursed</th>
-                        <th className="p-4 font-semibold">Due Date</th>
-                        <th className="p-4 font-semibold">Missed Pmts</th>
-                        <th className="p-4 font-semibold">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {loans.length === 0 ? (
-                        <tr>
-                          <td colSpan={9} className="p-12 text-center text-gray-400">No loan records found.</td>
-                        </tr>
-                      ) : loans.map(loan => (
-                        <tr key={loan.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="p-4 text-sm font-medium text-gray-900">{loan.institution}</td>
-                          <td className="p-4">
-                            <span className="text-xs uppercase text-gray-500 bg-slate-50 px-2 py-1 rounded">{loan.institutionType}</span>
-                          </td>
-                          <td className="p-4 text-sm font-mono text-gray-900 text-right">{formatCurrency(loan.amount)}</td>
-                          <td className="p-4 text-sm font-mono text-right">
-                            <span className={loan.outstandingBalance > 0 ? 'text-orange-400' : 'text-emerald-400'}>
-                              {formatCurrency(loan.outstandingBalance)}
-                            </span>
-                          </td>
-                          <td className="p-4 text-sm font-mono text-gray-600 text-right">{loan.interestRate.toFixed(1)}%</td>
-                          <td className="p-4 text-xs text-gray-500">
-                            {format(new Date(loan.disbursedAt), 'MMM d, yyyy')}
-                          </td>
-                          <td className="p-4 text-xs text-gray-500">
-                            {loan.dueDate ? format(new Date(loan.dueDate), 'MMM d, yyyy') : '—'}
-                          </td>
-                          <td className="p-4 text-center">
-                            <span className={cn(
-                              'text-sm font-bold font-mono',
-                              loan.missedPayments > 0 ? 'text-red-400' : 'text-emerald-400'
-                            )}>
-                              {loan.missedPayments}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <span className={cn(
-                              'px-2.5 py-1 rounded-full text-xs font-medium border capitalize',
-                              LOAN_STATUS_COLORS[loan.status] ?? 'text-gray-400 bg-slate-50 border-slate-200'
-                            )}>
-                              {loan.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    {loans.length > 0 && (
-                      <tfoot>
-                        <tr className="border-t border-slate-200 bg-slate-50">
-                          <td colSpan={2} className="p-4 text-xs text-gray-400 font-medium uppercase">Total Exposure</td>
-                          <td className="p-4 text-sm font-bold font-mono text-gray-900 text-right">
-                            {formatCurrency(loans.reduce((s, l) => s + l.amount, 0))}
-                          </td>
-                          <td className="p-4 text-sm font-bold font-mono text-orange-400 text-right">
-                            {formatCurrency(data.loanExposure.totalExposure)}
-                          </td>
-                          <td colSpan={5} />
-                        </tr>
-                      </tfoot>
-                    )}
-                  </table>
-                </div>
+                  <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-white">
+                    <span className="inline-flex items-center gap-2 text-sm text-gray-600"><Wallet className="w-4 h-4 text-gray-400" /> Total Outstanding</span>
+                    <span className={cn('text-base font-bold', data.loanExposure.totalExposure > 0 ? 'text-gray-900' : 'text-emerald-600')}>
+                      {formatCurrency(data.loanExposure.totalExposure)}
+                    </span>
+                  </div>
+                </Panel>
               </div>
-            )}
 
-            {/* Tab: Decision Engine */}
-            {activeTab === 'decision' && (() => {
-              const decision = getDecision();
-              const DecIcon = decision.icon;
-              return (
-                <div className="space-y-6">
-                  <div className="glass-panel p-6 rounded-2xl">
-                    <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                      <Brain className="w-5 h-5 text-purple-400" />
-                      Loan Decision Engine
+              {/* Right: tabs */}
+              <div className="lg:col-span-2 space-y-5">
+                <div className="flex gap-1.5 p-1 bg-white border border-slate-200 rounded-xl overflow-x-auto">
+                  {tabs.map(tab => (
+                    <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                      className={cn('flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all flex-1 justify-center',
+                        activeTab === tab.id ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 hover:bg-slate-50')}>
+                      <tab.icon className="w-4 h-4" /> {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Overview */}
+                {activeTab === 'overview' && (
+                  <Panel padded>
+                    <h3 className="font-display font-bold text-gray-900 flex items-center gap-2 mb-4">
+                      <Sparkles className="w-4 h-4 text-violet-500" /> AI Credit Assessment
                     </h3>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">Requested Loan Amount (ZMW)</label>
-                        <input
-                          type="number"
-                          value={loanAmount}
-                          onChange={e => setLoanAmount(e.target.value)}
-                          className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-gray-900 font-mono text-lg focus:outline-none focus:border-cyan-500 transition-colors"
-                          placeholder="50000"
-                          min="0"
-                          step="1000"
-                        />
-                        <p className="text-xs text-gray-400 mt-1">Recommended limit: {formatCurrency(data.recommendedCreditLimit)}</p>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wider">Loan Term (Months)</label>
-                        <input
-                          type="number"
-                          value={loanTerm}
-                          onChange={e => setLoanTerm(e.target.value)}
-                          className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-gray-900 font-mono text-lg focus:outline-none focus:border-cyan-500 transition-colors"
-                          placeholder="12"
-                          min="1"
-                          max="360"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Decision Card */}
-                    <div className={cn('p-6 rounded-2xl border-2 mb-6', decision.bg)}>
-                      <div className="flex items-center gap-4 mb-4">
-                        <div className={cn('w-14 h-14 rounded-full flex items-center justify-center', decision.bg)}>
-                          <DecIcon className={cn('w-7 h-7', decision.color)} />
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">AI Decision</p>
-                          <p className={cn('text-3xl font-display font-bold uppercase tracking-wide', decision.color)}>
-                            {decision.decision}
-                          </p>
-                        </div>
-                      </div>
-                      <p className="text-gray-700 text-sm leading-relaxed">{decision.message}</p>
-                    </div>
-
-                    {/* Decision Factors */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                      {[
-                        {
-                          label: 'Credit Score',
-                          value: `${data.creditScore.score} / 1000`,
-                          status: data.creditScore.score >= 700 ? 'pass' : data.creditScore.score >= 500 ? 'warn' : 'fail',
-                          threshold: '≥ 700 for approval',
-                        },
-                        {
-                          label: 'Loan vs Limit',
-                          value: `${Math.round((parseFloat(loanAmount) / data.recommendedCreditLimit) * 100)}%`,
-                          status: parseFloat(loanAmount) <= data.recommendedCreditLimit ? 'pass' : parseFloat(loanAmount) <= data.recommendedCreditLimit * 1.2 ? 'warn' : 'fail',
-                          threshold: `Limit: ${formatCurrency(data.recommendedCreditLimit)}`,
-                        },
-                        {
-                          label: 'Default Probability',
-                          value: `${(data.creditScore.probabilityOfDefault * 100).toFixed(1)}%`,
-                          status: data.creditScore.probabilityOfDefault < 0.1 ? 'pass' : data.creditScore.probabilityOfDefault < 0.3 ? 'warn' : 'fail',
-                          threshold: '< 10% for approval',
-                        },
-                      ].map(factor => (
-                        <div key={factor.label} className={cn(
-                          'p-4 rounded-xl border flex items-start gap-3',
-                          factor.status === 'pass' ? 'bg-emerald-500/5 border-emerald-500/20' :
-                          factor.status === 'warn' ? 'bg-yellow-500/5 border-yellow-500/20' :
-                          'bg-red-500/5 border-red-500/20'
-                        )}>
-                          {factor.status === 'pass' && <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />}
-                          {factor.status === 'warn' && <ClockIcon className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />}
-                          {factor.status === 'fail' && <XCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />}
+                    <p className="text-sm text-gray-700 leading-relaxed p-4 rounded-xl bg-violet-500/5 border border-violet-500/15 mb-5">
+                      {data.aiInsights}
+                    </p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">Key Risk Factors</p>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      {data.riskFactors.map((factor: any, i: number) => (
+                        <div key={i} className="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 hover:bg-slate-50/70 transition-colors">
+                          <span className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
+                            factor.impact === 'positive' ? 'bg-emerald-500/10' : factor.impact === 'negative' ? 'bg-rose-500/10' : 'bg-amber-500/10')}>
+                            <ShieldAlert className={cn('w-4 h-4',
+                              factor.impact === 'positive' ? 'text-emerald-600' : factor.impact === 'negative' ? 'text-rose-600' : 'text-amber-600')} />
+                          </span>
                           <div>
-                            <p className="text-xs text-gray-500 uppercase tracking-wider">{factor.label}</p>
-                            <p className="text-lg font-bold font-mono text-gray-900 mt-1">{factor.value}</p>
-                            <p className="text-xs text-gray-400 mt-1">{factor.threshold}</p>
+                            <p className="text-sm font-medium text-gray-900">{factor.factor}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{factor.description}</p>
                           </div>
                         </div>
                       ))}
                     </div>
+                  </Panel>
+                )}
 
-                    {/* Monthly Payment Estimate */}
-                    {parseFloat(loanAmount) > 0 && parseFloat(loanTerm) > 0 && (
-                      <div className="glass-panel p-5 rounded-xl bg-slate-50 flex items-center justify-between">
+                {/* Score Breakdown */}
+                {activeTab === 'breakdown' && scoreBreakdown && (
+                  <div className="space-y-5">
+                    <Panel padded>
+                      <div className="flex items-center justify-between mb-6">
                         <div>
-                          <p className="text-sm text-gray-500 mb-1">Estimated Monthly Payment</p>
-                          <p className="text-xs text-gray-400">Based on 18% p.a. interest rate</p>
+                          <h3 className="font-display font-bold text-gray-900">Score Component Breakdown</h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">How each factor contributes to the total</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-2xl font-bold font-mono text-cyan-400">
-                            {formatCurrency(
-                              (() => {
-                                const P = parseFloat(loanAmount);
-                                const r = 0.18 / 12;
-                                const n = parseFloat(loanTerm);
-                                if (!P || !n) return 0;
-                                return P * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
-                              })()
-                            )}
-                          </p>
-                          <p className="text-xs text-gray-400 mt-1">/month for {loanTerm} months</p>
+                          <p className="text-3xl font-display font-bold text-gray-900">{data.creditScore.score}</p>
+                          <p className="text-[11px] text-gray-400">/ 1000 total</p>
                         </div>
                       </div>
-                    )}
+                      <div className="space-y-5">
+                        {SCORE_COMPONENTS.map(comp => {
+                          const value = scoreBreakdown[comp.key];
+                          const pct = Math.round((value / comp.max) * 100);
+                          return (
+                            <div key={comp.key}>
+                              <div className="flex items-baseline justify-between mb-1.5">
+                                <div className="min-w-0">
+                                  <span className="text-sm font-medium text-gray-900">{comp.label}</span>
+                                  <span className="hidden sm:inline text-xs text-gray-400 ml-2">{comp.description}</span>
+                                </div>
+                                <span className="text-sm font-bold shrink-0" style={{ color: comp.color }}>
+                                  {value} <span className="text-xs font-normal text-gray-400">/ {comp.max}</span>
+                                </span>
+                              </div>
+                              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: comp.color }} />
+                              </div>
+                              <div className="flex justify-between mt-1 text-[11px] text-gray-400">
+                                <span>{pct}% of max</span>
+                                <span>{Math.round((comp.max / 1000) * 100)}% weight</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </Panel>
+                    <Panel padded>
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Model Recommendation</p>
+                      <p className="text-sm text-gray-700 leading-relaxed">{data.creditScore.recommendation}</p>
+                    </Panel>
                   </div>
-                </div>
-              );
-            })()}
-          </div>
-        )}
+                )}
 
-        {!searchNrc && !isLoading && (
-          <div className="glass-panel p-16 rounded-2xl flex flex-col items-center text-center">
-            <div className="w-20 h-20 bg-cyan-500/10 rounded-full flex items-center justify-center mb-6">
-              <Search className="w-10 h-10 text-cyan-400/50" />
+                {/* Loan Portfolio */}
+                {activeTab === 'loans' && (
+                  <Panel title="Tradeline Records" subtitle={`${loans.length} facilities across all institutions`}>
+                    <Table head={['Institution', 'Principal', 'Outstanding', 'Rate', 'Disbursed', 'Missed', 'Status']}>
+                      {loans.length === 0 && <tr><Td colSpan={7} className="text-center text-muted-foreground py-8">No loan records found.</Td></tr>}
+                      {loans.map((loan: any) => (
+                        <tr key={loan.id} className="hover:bg-slate-50/70 transition-colors">
+                          <Td>
+                            <p className="font-semibold text-gray-900">{loan.institution}</p>
+                            <p className="text-[11px] uppercase text-gray-400">{loan.institutionType}</p>
+                          </Td>
+                          <Td>{formatCurrency(loan.amount)}</Td>
+                          <Td className={loan.outstandingBalance > 0 ? 'text-amber-600 font-medium' : 'text-emerald-600'}>{formatCurrency(loan.outstandingBalance)}</Td>
+                          <Td className="text-muted-foreground">{loan.interestRate.toFixed(1)}%</Td>
+                          <Td className="text-muted-foreground">{format(new Date(loan.disbursedAt), 'MMM d, yyyy')}</Td>
+                          <Td className={loan.missedPayments > 0 ? 'text-rose-600 font-bold' : 'text-emerald-600'}>{loan.missedPayments}</Td>
+                          <Td><Badge tone={LOAN_TONE[loan.status] ?? 'slate'}>{loan.status.replace('_', ' ')}</Badge></Td>
+                        </tr>
+                      ))}
+                    </Table>
+                    {loans.length > 0 && (
+                      <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 text-sm">
+                        <span className="text-xs uppercase tracking-wider text-gray-400 font-semibold">Totals</span>
+                        <span className="text-muted-foreground">
+                          Principal <b className="text-gray-900">{formatCurrency(loans.reduce((s: number, l: any) => s + l.amount, 0))}</b>
+                          <span className="mx-2 text-slate-300">·</span>
+                          Outstanding <b className="text-amber-600">{formatCurrency(data.loanExposure.totalExposure)}</b>
+                        </span>
+                      </div>
+                    )}
+                  </Panel>
+                )}
+
+                {/* Decision Engine */}
+                {activeTab === 'decision' && (() => {
+                  const decision = getDecision();
+                  const DecIcon = decision.icon;
+                  const tones: Record<string, { bg: string; text: string; ring: string }> = {
+                    emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-600', ring: 'border-emerald-500/30' },
+                    amber: { bg: 'bg-amber-500/10', text: 'text-amber-600', ring: 'border-amber-500/30' },
+                    rose: { bg: 'bg-rose-500/10', text: 'text-rose-600', ring: 'border-rose-500/30' },
+                  };
+                  const t = tones[decision.tone];
+                  const monthly = (() => {
+                    const P = parseFloat(loanAmount); const r = 0.18 / 12; const n = parseFloat(loanTerm);
+                    if (!P || !n) return 0;
+                    return P * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
+                  })();
+                  return (
+                    <Panel padded>
+                      <h3 className="font-display font-bold text-gray-900 flex items-center gap-2 mb-5">
+                        <Brain className="w-4 h-4 text-violet-500" /> Loan Decision Simulator
+                      </h3>
+                      <div className="grid sm:grid-cols-2 gap-4 mb-5">
+                        <Field label="Requested Amount (ZMW)" hint={`limit ${formatCurrency(data.recommendedCreditLimit)}`}>
+                          <input type="number" min={0} step={1000} className={inputCls + ' font-mono'} value={loanAmount} onChange={e => setLoanAmount(e.target.value)} />
+                        </Field>
+                        <Field label="Term (months)">
+                          <input type="number" min={1} max={360} className={inputCls + ' font-mono'} value={loanTerm} onChange={e => setLoanTerm(e.target.value)} />
+                        </Field>
+                      </div>
+
+                      <div className={cn('flex items-center gap-4 p-5 rounded-2xl border mb-5', t.bg, t.ring)}>
+                        <span className={cn('w-12 h-12 rounded-xl flex items-center justify-center bg-white/70 shrink-0')}>
+                          <DecIcon className={cn('w-6 h-6', t.text)} />
+                        </span>
+                        <div className="min-w-0">
+                          <p className={cn('text-xl font-display font-extrabold uppercase tracking-wide', t.text)}>{decision.decision}</p>
+                          <p className="text-sm text-gray-700 mt-0.5">{decision.message}</p>
+                        </div>
+                        {monthly > 0 && (
+                          <div className="ml-auto text-right shrink-0 hidden sm:block">
+                            <p className="text-[11px] uppercase tracking-wider text-gray-400">Est. Monthly</p>
+                            <p className="text-lg font-bold text-gray-900">{formatCurrency(monthly)}</p>
+                            <p className="text-[11px] text-gray-400">@ 18% p.a. · {loanTerm} mo</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid sm:grid-cols-3 gap-3">
+                        {[
+                          { label: 'Credit Score', value: `${data.creditScore.score} / 1000`, status: score >= 700 ? 'pass' : score >= 500 ? 'warn' : 'fail', threshold: '≥ 700 for auto-approval' },
+                          { label: 'Loan vs Limit', value: `${Math.round((parseFloat(loanAmount) / Math.max(1, data.recommendedCreditLimit)) * 100)}%`, status: parseFloat(loanAmount) <= data.recommendedCreditLimit ? 'pass' : parseFloat(loanAmount) <= data.recommendedCreditLimit * 1.2 ? 'warn' : 'fail', threshold: `limit ${formatCurrency(data.recommendedCreditLimit)}` },
+                          { label: 'Default Probability', value: `${(data.creditScore.probabilityOfDefault * 100).toFixed(1)}%`, status: data.creditScore.probabilityOfDefault < 0.1 ? 'pass' : data.creditScore.probabilityOfDefault < 0.3 ? 'warn' : 'fail', threshold: '< 10% for auto-approval' },
+                        ].map(f => (
+                          <div key={f.label} className="p-4 rounded-xl border border-slate-200">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[11px] uppercase tracking-wider text-gray-400">{f.label}</p>
+                              {f.status === 'pass' && <CheckCircle className="w-4 h-4 text-emerald-500" />}
+                              {f.status === 'warn' && <ClockIcon className="w-4 h-4 text-amber-500" />}
+                              {f.status === 'fail' && <XCircle className="w-4 h-4 text-rose-500" />}
+                            </div>
+                            <p className="text-lg font-bold text-gray-900 mt-1.5">{f.value}</p>
+                            <p className="text-[11px] text-gray-400 mt-0.5">{f.threshold}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </Panel>
+                  );
+                })()}
+              </div>
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Search for a Credit Profile</h3>
-            <p className="text-gray-400 max-w-sm">
-              Enter a customer's NRC number above or click one of the quick-fill options to load their complete credit profile.
-            </p>
           </div>
         )}
       </div>

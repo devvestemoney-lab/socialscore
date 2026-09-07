@@ -101,3 +101,8 @@
 .text-gradient {
   @apply bg-clip-text text-transparent bg-gradient-to-r from-[#4F6EF7] to-[#3B5BDB];
 }
+
+/* Smooth in-page anchor scrolling (landing page nav) */
+html {
+  scroll-behavior: smooth;
+}

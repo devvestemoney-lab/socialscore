@@ -4,7 +4,14 @@ import { useAuth } from '@/hooks/use-auth';
 import {
   LayoutDashboard, Users, LogOut, Activity, ShieldCheck, Building, Menu, X,
   Brain, DollarSign, ShieldAlert, Database, BookOpen, BarChart3, Bell,
-  Calendar, Sun, ScrollText, LifeBuoy, FileText,
+  Calendar, Sun, ScrollText, FileText, Landmark, UserCog, BookUser,
+  FileSearch, Gauge, UploadCloud, BadgeCheck, Workflow, PieChart,
+  Scale, ClipboardCheck, KeyRound, Puzzle, Tags, TrendingUp, Settings,
+  Flag, FileCheck2, HeartPulse, Search, Radar, Star, ListChecks, Siren,
+  UploadCloud as UploadIcon, HardDriveUpload, History, ListX, SearchCheck,
+  CheckCircle2, Timer, BellRing, TrendingDown, SlidersHorizontal, Webhook,
+  Zap, Receipt, Building2, GitBranch, KeySquare, Code2, LifeBuoy, Headset,
+  FileBarChart2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -22,17 +29,49 @@ export function Layout({ children }: { children: React.ReactNode }) {
         { section: 'Overview', items: [
           { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
         ]},
-        { section: 'Core Modules', items: [
-          { icon: Building, label: 'Lenders / Institutions', href: '/admin/tenants' },
-          { icon: Database, label: 'Data Sources', href: '/admin/data-sources' },
+        { section: 'Tenant Management', items: [
+          { icon: Building, label: 'Tenants', href: '/admin/tenants' },
+          { icon: Landmark, label: 'Institutions', href: '/admin/institutions' },
+          { icon: Users, label: 'Users & Access', href: '/admin/users' },
+          { icon: UserCog, label: 'Roles & Permissions', href: '/admin/roles' },
         ]},
-        { section: 'Risk & Scoring', items: [
-          { icon: Brain, label: 'Scoring Models', href: '/admin/scoring-models' },
+        { section: 'Consumer & Credit', items: [
+          { icon: BookUser, label: 'Consumer Registry', href: '/admin/consumers' },
+          { icon: FileText, label: 'Credit Reports', href: '/admin/credit-reports' },
+          { icon: FileSearch, label: 'Credit Inquiries', href: '/admin/credit-inquiries' },
+          { icon: Gauge, label: 'Credit Scores', href: '/admin/credit-scores' },
+        ]},
+        { section: 'Data Ecosystem', items: [
+          { icon: UploadCloud, label: 'Data Contributions', href: '/admin/data-contributions' },
+          { icon: BadgeCheck, label: 'Data Quality', href: '/admin/data-quality' },
+          { icon: Database, label: 'Data Sources', href: '/admin/data-sources' },
+          { icon: Workflow, label: 'Data Processing', href: '/admin/data-processing' },
+        ]},
+        { section: 'Risk & Intelligence', items: [
+          { icon: Brain, label: 'Scorecards', href: '/admin/scoring-models' },
+          { icon: PieChart, label: 'Risk Segmentation', href: '/admin/risk-segmentation' },
+          { icon: BookOpen, label: 'Portfolio Monitoring', href: '/admin/portfolio' },
           { icon: ShieldAlert, label: 'Fraud Detection', href: '/admin/fraud' },
+          { icon: Bell, label: 'Alerts', href: '/admin/alerts' },
+        ]},
+        { section: 'Operations', items: [
+          { icon: Scale, label: 'Disputes', href: '/admin/disputes' },
+          { icon: ClipboardCheck, label: 'Consent Management', href: '/admin/consent-management' },
+          { icon: KeyRound, label: 'API Management', href: '/admin/api-management' },
+          { icon: Puzzle, label: 'Integrations', href: '/admin/integrations' },
+        ]},
+        { section: 'Commercial', items: [
+          { icon: Activity, label: 'Usage & Metering', href: '/admin/usage' },
+          { icon: Tags, label: 'Pricing Plans', href: '/admin/pricing' },
+          { icon: DollarSign, label: 'Billing & Invoices', href: '/admin/billing' },
+          { icon: TrendingUp, label: 'Revenue Analytics', href: '/admin/revenue' },
         ]},
         { section: 'Administration', items: [
-          { icon: DollarSign, label: 'Billing', href: '/admin/billing' },
+          { icon: Settings, label: 'System Settings', href: '/admin/settings' },
+          { icon: Flag, label: 'Feature Management', href: '/admin/features' },
           { icon: ScrollText, label: 'Audit Logs', href: '/admin/audit-logs' },
+          { icon: FileCheck2, label: 'Compliance', href: '/admin/compliance' },
+          { icon: HeartPulse, label: 'System Health', href: '/admin/health' },
         ]},
       ];
     }
@@ -44,13 +83,79 @@ export function Layout({ children }: { children: React.ReactNode }) {
       ];
     }
     return [
-      { section: 'Overview', items: [
-        { icon: LayoutDashboard, label: 'Credit Lookup', href: '/dashboard' },
-        { icon: BarChart3, label: 'Analytics', href: '/dashboard/analytics' },
+      { section: 'Dashboard', items: [
+        { icon: LayoutDashboard, label: 'Overview', href: '/dashboard' },
       ]},
-      { section: 'Portfolio', items: [
-        { icon: BookOpen, label: 'Loan Book', href: '/dashboard/portfolio' },
-        { icon: Users, label: 'Team', href: '/dashboard/users' },
+      { section: 'Credit Intelligence', items: [
+        { icon: Search, label: 'Consumer Search', href: '/dashboard/consumer-search' },
+        { icon: FileText, label: 'Credit Reports', href: '/dashboard/credit-reports' },
+        { icon: FileSearch, label: 'Credit Inquiries', href: '/dashboard/credit-inquiries' },
+        { icon: Radar, label: 'Monitoring & Alerts', href: '/dashboard/monitoring' },
+      ]},
+      { section: 'Consumers', items: [
+        { icon: BookUser, label: 'Consumer Directory', href: '/dashboard/consumers' },
+        { icon: Star, label: 'Saved Consumers', href: '/dashboard/saved-consumers' },
+        { icon: ListChecks, label: 'Watchlists', href: '/dashboard/watchlists' },
+        { icon: Activity, label: 'Consumer Activity', href: '/dashboard/consumer-activity' },
+      ]},
+      { section: 'Risk & Analytics', items: [
+        { icon: BarChart3, label: 'Risk Overview', href: '/dashboard/analytics' },
+        { icon: BookOpen, label: 'Portfolio Analytics', href: '/dashboard/portfolio' },
+        { icon: Gauge, label: 'Score Distribution', href: '/dashboard/score-distribution' },
+        { icon: PieChart, label: 'Risk Segmentation', href: '/dashboard/risk-segmentation' },
+        { icon: Siren, label: 'Early Warning Signals', href: '/dashboard/early-warnings' },
+      ]},
+      { section: 'Data Contributions', items: [
+        { icon: UploadIcon, label: 'Submit Data', href: '/dashboard/submit-data' },
+        { icon: HardDriveUpload, label: 'Data Uploads', href: '/dashboard/data-uploads' },
+        { icon: History, label: 'Submission History', href: '/dashboard/submission-history' },
+        { icon: BadgeCheck, label: 'Data Quality', href: '/dashboard/data-quality' },
+        { icon: ListX, label: 'Validation Errors', href: '/dashboard/validation-errors' },
+      ]},
+      { section: 'Disputes & Cases', items: [
+        { icon: Scale, label: 'Active Disputes', href: '/dashboard/disputes' },
+        { icon: SearchCheck, label: 'Investigations', href: '/dashboard/investigations' },
+        { icon: CheckCircle2, label: 'Resolved Cases', href: '/dashboard/resolved-cases' },
+        { icon: Timer, label: 'SLA Tracking', href: '/dashboard/sla-tracking' },
+      ]},
+      { section: 'Alerts & Notifications', items: [
+        { icon: BellRing, label: 'Consumer Alerts', href: '/dashboard/consumer-alerts' },
+        { icon: TrendingDown, label: 'Portfolio Alerts', href: '/dashboard/portfolio-alerts' },
+        { icon: Bell, label: 'System Notifications', href: '/dashboard/notifications' },
+        { icon: SlidersHorizontal, label: 'Alert Rules', href: '/dashboard/alert-rules' },
+      ]},
+      { section: 'API & Integrations', items: [
+        { icon: Activity, label: 'API Dashboard', href: '/dashboard/api' },
+        { icon: KeyRound, label: 'API Credentials', href: '/dashboard/api-credentials' },
+        { icon: ScrollText, label: 'API Logs', href: '/dashboard/api-logs' },
+        { icon: Webhook, label: 'Webhooks', href: '/dashboard/webhooks' },
+        { icon: Puzzle, label: 'Integrations', href: '/dashboard/integrations' },
+      ]},
+      { section: 'Usage & Billing', items: [
+        { icon: Zap, label: 'Usage Overview', href: '/dashboard/usage' },
+        { icon: FileBarChart2, label: 'Credit Report Usage', href: '/dashboard/report-usage' },
+        { icon: TrendingUp, label: 'API Usage', href: '/dashboard/api-usage' },
+        { icon: Receipt, label: 'Billing & Invoices', href: '/dashboard/billing' },
+        { icon: Tags, label: 'Subscription Plan', href: '/dashboard/subscription' },
+      ]},
+      { section: 'Administration', items: [
+        { icon: Building2, label: 'Organization Profile', href: '/dashboard/organization' },
+        { icon: Users, label: 'Users', href: '/dashboard/users' },
+        { icon: UserCog, label: 'Roles & Permissions', href: '/dashboard/roles' },
+        { icon: GitBranch, label: 'Branches / Departments', href: '/dashboard/branches' },
+        { icon: ShieldCheck, label: 'Security Settings', href: '/dashboard/security' },
+      ]},
+      { section: 'Compliance & Audit', items: [
+        { icon: ScrollText, label: 'Audit Logs', href: '/dashboard/audit-logs' },
+        { icon: KeySquare, label: 'Access History', href: '/dashboard/access-history' },
+        { icon: ClipboardCheck, label: 'Consent Records', href: '/dashboard/consent-records' },
+        { icon: FileCheck2, label: 'Compliance Reports', href: '/dashboard/compliance-reports' },
+      ]},
+      { section: 'Support', items: [
+        { icon: LifeBuoy, label: 'Help Center', href: '/dashboard/help' },
+        { icon: BookOpen, label: 'Documentation', href: '/dashboard/docs' },
+        { icon: Code2, label: 'API Documentation', href: '/dashboard/api-docs' },
+        { icon: Headset, label: 'Contact Support', href: '/dashboard/support' },
       ]},
     ];
   };
@@ -58,10 +163,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const navGroups = getNavGroups();
   const flatItems = navGroups.flatMap(g => g.items);
 
-  const isActive = (href: string) => {
-    if (href === '/admin' || href === '/dashboard') return location === href;
-    return location.startsWith(href);
-  };
+  const isActive = (href: string) => location === href;
 
   const current = flatItems.find(i => isActive(i.href));
   const pageTitle = current?.label ?? 'Dashboard';
@@ -76,6 +178,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const dateRange = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
+  // Each page renders its own <Layout>, so navigating recreates the sidebar and
+  // resets its scroll. Persist the offset and restore it before paint.
+  const navRef = React.useRef<HTMLElement | null>(null);
+  const NAV_SCROLL_KEY = 'sidebar-scroll';
+
+  React.useLayoutEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+    const saved = Number(sessionStorage.getItem(NAV_SCROLL_KEY) ?? 0);
+    if (saved > 0) el.scrollTop = saved;
+    const onScroll = () => sessionStorage.setItem(NAV_SCROLL_KEY, String(el.scrollTop));
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [location]);
+
   const SidebarInner = () => (
     <>
       {/* Logo */}
@@ -85,15 +202,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <ShieldCheck className="w-5 h-5 text-white" />
         </div>
         <div className="leading-tight">
-          <p className="text-lg font-display font-bold text-white tracking-wide">ZCRB</p>
+          <p className="text-lg font-display font-bold text-white tracking-wide">Social Score</p>
           <p className="text-[10px] uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.45)' }}>
-            Credit Reference Bureau
+            Credit Intelligence Platform
           </p>
         </div>
       </div>
 
       {/* Nav groups */}
-      <nav className="flex-1 px-3 overflow-y-auto pb-4">
+      <nav ref={navRef} className="flex-1 px-3 overflow-y-auto pb-4">
         {navGroups.map(group => (
           <div key={group.section} className="mb-2">
             <p className="px-3 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-widest"
@@ -105,6 +222,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 const active = isActive(item.href);
                 return (
                   <Link key={item.href} href={item.href}
+                    ref={active ? (el: HTMLAnchorElement | null) => {
+                      if (el && navRef.current) {
+                        const nav = navRef.current;
+                        const top = el.offsetTop;
+                        if (top < nav.scrollTop || top > nav.scrollTop + nav.clientHeight - 48) {
+                          nav.scrollTop = Math.max(0, top - nav.clientHeight / 2);
+                        }
+                      }
+                    } : undefined}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={cn(
                       'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
@@ -146,7 +272,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen bg-background flex overflow-hidden">
+    <div className="h-screen bg-background flex overflow-hidden">
       {/* Sidebar — desktop */}
       <aside className="hidden md:flex w-64 flex-col shrink-0 relative z-10"
         style={{ background: '#111827', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
@@ -198,8 +324,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           {children}
           <p className="text-center text-xs text-gray-400 mt-10 pb-4">
-            © {new Date().getFullYear()} ZCRB. All rights reserved.
-            <span className="mx-2">·</span> Enterprise CRB Platform
+            © {new Date().getFullYear()} Social Score. All rights reserved.
+            <span className="mx-2">·</span> Enterprise Credit Intelligence Platform
           </p>
         </main>
       </div>

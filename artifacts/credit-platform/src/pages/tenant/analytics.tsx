@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useGetTenantAnalytics } from '@workspace/api-client-react';
 import { TrendingUp, Search, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
 import { format } from 'date-fns';
@@ -58,6 +58,18 @@ export default function TenantAnalytics() {
     { label: 'Approval Rate', value: `${(data.approvalRate * 100).toFixed(1)}%`, color: 'text-emerald-400', bg: 'bg-emerald-400/10', icon: CheckCircle },
   ];
 
+  // Build a complete 7-day series — the API only returns days that had activity,
+  // which otherwise leaves a single stranded bar on an empty axis.
+  const trendMap = new Map((data.queryTrend ?? []).map((d: any) => [d.date, d.value]));
+  const queryTrend = Array.from({ length: 7 }, (_, i) => {
+    const day = new Date();
+    day.setDate(day.getDate() - (6 - i));
+    const key = day.toISOString().slice(0, 10);
+    return { date: key, label: format(day, 'EEE'), value: Number(trendMap.get(key) ?? 0) };
+  });
+  const trendTotal = queryTrend.reduce((a, d) => a + d.value, 0);
+  const trendPeak = Math.max(1, ...queryTrend.map(d => d.value));
+
   const riskPieData = [
     { name: 'Excellent (Low)', value: data.riskDistribution.low, color: '#34d399' },
     { name: 'Good (Medium)', value: data.riskDistribution.medium, color: '#fbbf24' },
@@ -94,32 +106,56 @@ export default function TenantAnalytics() {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <div className="lg:col-span-2 glass-panel p-6 rounded-2xl">
-          <h3 className="text-lg font-bold text-gray-900 mb-6">Query Volume (Last 7 Days)</h3>
-          <div className="h-[280px]">
+        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6">
+          <div className="flex items-start justify-between mb-1">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">Query Volume</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Credit queries run by your team over the last 7 days</p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-display font-bold text-gray-900">{trendTotal}</p>
+              <p className="text-[11px] text-gray-400">total this week</p>
+            </div>
+          </div>
+          <div className="h-[240px] mt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.queryTrend} barSize={28}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  stroke="#ffffff40"
-                  fontSize={12}
-                  tickFormatter={v => {
-                    try { return format(new Date(v + 'T12:00:00'), 'EEE'); } catch { return v; }
+              <AreaChart data={queryTrend} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="qvGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#4F6EF7" stopOpacity={0.28} />
+                    <stop offset="100%" stopColor="#4F6EF7" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#94A3B8' }} axisLine={false} tickLine={false} dy={6} />
+                <YAxis tick={{ fontSize: 12, fill: '#94A3B8' }} axisLine={false} tickLine={false}
+                  allowDecimals={false} domain={[0, Math.ceil(trendPeak * 1.3)]} />
+                <Tooltip
+                  cursor={{ stroke: '#4F6EF7', strokeWidth: 1, strokeDasharray: '4 4' }}
+                  contentStyle={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: '0 8px 24px rgba(15,23,42,0.08)', fontSize: 12 }}
+                  formatter={(v: any) => [`${v} quer${v === 1 ? 'y' : 'ies'}`, '']}
+                  labelFormatter={(_l: any, p: any) => {
+                    const iso = p?.[0]?.payload?.date;
+                    try { return format(new Date(iso + 'T12:00:00'), 'EEEE, d MMM'); } catch { return iso; }
                   }}
                 />
-                <YAxis stroke="#ffffff40" fontSize={12} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', color: '#fff' }}
-                  labelFormatter={v => { try { return format(new Date(v + 'T12:00:00'), 'MMM d, yyyy'); } catch { return v; } }}
-                />
-                <Bar dataKey="value" name="Queries" fill="#06b6d4" radius={[6, 6, 0, 0]} />
-              </BarChart>
+                <Area type="monotone" dataKey="value" stroke="#4F6EF7" strokeWidth={2.5} fill="url(#qvGrad)"
+                  dot={{ r: 3.5, fill: '#fff', stroke: '#4F6EF7', strokeWidth: 2 }}
+                  activeDot={{ r: 5.5, fill: '#4F6EF7', stroke: '#fff', strokeWidth: 2 }} />
+              </AreaChart>
             </ResponsiveContainer>
+          </div>
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
+            {queryTrend.map(d => (
+              <div key={d.date} className="text-center flex-1">
+                <p className={cn('text-sm font-bold', d.value > 0 ? 'text-gray-900' : 'text-gray-300')}>{d.value}</p>
+                <p className="text-[11px] text-gray-400">{d.label}</p>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="glass-panel p-6 rounded-2xl">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6">
           <h3 className="text-lg font-bold text-gray-900 mb-6">Risk Distribution</h3>
           {riskPieData.length > 0 ? (
             <>

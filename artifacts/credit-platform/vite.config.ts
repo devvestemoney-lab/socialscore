@@ -61,6 +61,7 @@ export default defineConfig({
   server: {
     port,
     host: "0.0.0.0",
+    proxy: { "/api": "http://localhost:3001" },
     allowedHosts: true,
     fs: {
       strict: true,

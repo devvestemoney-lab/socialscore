@@ -92,8 +92,8 @@ export default function AdminDashboard() {
     <Layout>
       {/* Welcome */}
       <div className="mb-6">
-        <h1 className="text-2xl font-display font-bold text-gray-900">Welcome back, Super Admin <span className="align-middle">👑</span></h1>
-        <p className="text-sm text-gray-500 mt-1">Here's what's happening across the CRB platform</p>
+        <h1 className="text-2xl font-display font-bold text-gray-900">Welcome back, Super Admin</h1>
+        <p className="text-sm text-gray-500 mt-1">Here's what's happening across the Social Score platform</p>
       </div>
 
       {/* KPI row */}
