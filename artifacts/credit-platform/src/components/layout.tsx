@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'wouter';
 import { useAuth, type ApiFailure } from '@/hooks/use-auth';
-import { useTheme } from '@/hooks/use-theme';
 import {
   LayoutDashboard, Users, LogOut, Activity, ShieldCheck, Building, Menu, X,
   Brain, DollarSign, ShieldAlert, Database, BookOpen, BarChart3, Bell,
@@ -14,7 +13,7 @@ import {
   Zap, Receipt, Building2, GitBranch, KeySquare, Code2, LifeBuoy, Headset,
   FileBarChart2, IdCard, Sparkles, Wallet, History as HistoryIcon,
   BellRing as BellIcon, Download, CreditCard, GraduationCap, HelpCircle,
-  UserCircle, Lock, ServerCrash, RefreshCw, PlugZap, Moon,
+  UserCircle, Lock, ServerCrash, RefreshCw, PlugZap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -67,7 +66,6 @@ function ApiErrorState({ failure, onRetry }: { failure: ApiFailure; onRetry: () 
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, logoutUser, apiFailure, clearApiFailure } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
@@ -408,11 +406,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Bell className="w-[18px] h-[18px]" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500" />
           </button>
-          <button onClick={toggleTheme} title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
-            className="p-2 rounded-lg hover:bg-slate-100 text-gray-500 hidden sm:block">
-            {theme === 'dark'
-              ? <Sun className="w-[18px] h-[18px]" />
-              : <Moon className="w-[18px] h-[18px]" />}
+          <button className="p-2 rounded-lg hover:bg-slate-100 text-gray-500 hidden sm:block">
+            <Sun className="w-[18px] h-[18px]" />
           </button>
         </header>
 
