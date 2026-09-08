@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import {
   db, customersTable, creditScoresTable, loansTable,
-  creditInquiriesTable, creditReportsTable,
+  creditInquiriesTable, creditReportsTable, consentsTable, tenantsTable,
 } from "@workspace/db";
 import { eq, desc, sql, ilike, or, and, gte, countDistinct } from "drizzle-orm";
 import { requireAuth, requireRole, type AuthRequest } from "../middlewares/auth.js";
@@ -164,6 +164,59 @@ router.get("/credit-reports", ...superAdmin, async (req, res) => {
   ]);
 
   res.json({ reports: rows, total, page, limit, summary });
+});
+
+
+/** Full report payload for the bureau's own view — any tenant's report */
+router.get("/credit-reports/:id", ...superAdmin, async (req, res) => {
+  const [report] = await db.select().from(creditReportsTable).where(eq(creditReportsTable.id, req.params.id));
+  if (!report) {
+    res.status(404).json({ error: "Not Found", message: "Report not found" });
+    return;
+  }
+  const [customer] = await db.select().from(customersTable).where(eq(customersTable.id, report.customerId));
+  const [scores, loans, inquiries, [consent], [tenant], [inquiry]] = await Promise.all([
+    db.select().from(creditScoresTable).where(eq(creditScoresTable.customerId, report.customerId))
+      .orderBy(desc(creditScoresTable.createdAt)).limit(8),
+    db.select().from(loansTable).where(eq(loansTable.customerId, report.customerId))
+      .orderBy(desc(loansTable.disbursedAt)),
+    db.select({
+      id: creditInquiriesTable.id, institutionName: creditInquiriesTable.institutionName,
+      kind: creditInquiriesTable.kind, purpose: creditInquiriesTable.purpose,
+      outcome: creditInquiriesTable.outcome, createdAt: creditInquiriesTable.createdAt,
+    }).from(creditInquiriesTable).where(eq(creditInquiriesTable.customerId, report.customerId))
+      .orderBy(desc(creditInquiriesTable.createdAt)).limit(15),
+    db.select({
+      active: sql<number>`count(*) filter (where status = 'active')::int`,
+      forRequester: sql<number>`count(*) filter (where status = 'active' and (tenant_id is null or tenant_id = ${report.tenantId}))::int`,
+      latestExpiry: sql<string | null>`max(expires_at) filter (where status = 'active')`,
+    }).from(consentsTable).where(eq(consentsTable.customerId, report.customerId)),
+    report.tenantId
+      ? db.select({ id: tenantsTable.id, name: tenantsTable.name, code: tenantsTable.code, type: tenantsTable.type })
+          .from(tenantsTable).where(eq(tenantsTable.id, report.tenantId))
+      : Promise.resolve([undefined as any]),
+    report.inquiryId
+      ? db.select().from(creditInquiriesTable).where(eq(creditInquiriesTable.id, report.inquiryId))
+      : Promise.resolve([undefined as any]),
+  ]);
+
+  const open = loans.filter(l => l.status !== "closed");
+  res.json({
+    report, customer, tenant: tenant ?? null, inquiry: inquiry ?? null,
+    latestScore: scores[0] ?? null, scoreHistory: scores,
+    loans, inquiries, consent,
+    totals: {
+      tradelines: loans.length,
+      activeLoans: loans.filter(l => l.status === "active").length,
+      defaulted: loans.filter(l => ["defaulted", "written_off"].includes(l.status)).length,
+      closed: loans.filter(l => l.status === "closed").length,
+      totalPrincipal: loans.reduce((a, l) => a + Number(l.amount), 0),
+      totalOutstanding: open.reduce((a, l) => a + Number(l.outstandingBalance), 0),
+      missedPayments12m: loans.reduce((a, l) => a + l.missedPayments, 0),
+      institutions: new Set(loans.map(l => l.institution)).size,
+      hardInquiries90d: inquiries.filter(i => i.kind === "hard" && Date.now() - new Date(i.createdAt).getTime() < 90 * 86_400_000).length,
+    },
+  });
 });
 
 // ─── CREDIT INQUIRIES ────────────────────────────────────────────────────────

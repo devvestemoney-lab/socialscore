@@ -3,6 +3,7 @@ import { Layout } from '@/components/layout';
 import { PageHeader, KpiGrid, Panel, Badge, Table, Td, Pager } from '@/components/admin/page-kit';
 import { useAuth } from '@/hooks/use-auth';
 import { FileText, CalendarDays, Timer, XCircle } from 'lucide-react';
+import { AdminReportView } from './report-view';
 import { cn } from '@/lib/utils';
 
 const API = import.meta.env.BASE_URL.replace(/\/$/, '') + '/api';
@@ -23,6 +24,7 @@ export default function CreditReports() {
   const [data, setData] = useState<any>(null);
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState('all');
+  const [openId, setOpenId] = useState<string | null>(null);
 
   async function load(p = page, st = status) {
     const res = await request(`${API}/admin/credit-reports?page=${p}&limit=${LIMIT}${st !== 'all' ? `&status=${st}` : ''}`);
@@ -33,6 +35,7 @@ export default function CreditReports() {
   const setFilter = (st: string) => { setStatus(st); setPage(1); load(1, st); };
   const onPage = (p: number) => { setPage(p); load(p); };
 
+  if (openId) return <Layout><AdminReportView id={openId} onBack={() => setOpenId(null)} /></Layout>;
   if (!data) return <Layout><div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div></Layout>;
 
   const { reports, total, summary } = data;
@@ -60,10 +63,10 @@ export default function CreditReports() {
           ))}
         </div>
 
-        <Panel title="Report Log" subtitle="Live feed across all tenants">
-          <Table head={['Reference', 'Consumer', 'Requesting Institution', 'Purpose', 'Score', 'Generated', 'Time', 'Status']}>
+        <Panel title="Report Log" subtitle="Live feed across all tenants — click a report to open the full bureau copy">
+          <Table head={['Reference', 'Consumer', 'Requesting Institution', 'Purpose', 'Score', 'Generated', 'Time', 'Status', '']}>
             {reports.map((r: any) => (
-              <tr key={r.id} className="hover:bg-slate-50/70 transition-colors">
+              <tr key={r.id} onClick={() => setOpenId(r.id)} className="hover:bg-blue-50/40 transition-colors cursor-pointer">
                 <Td className="font-mono text-xs text-blue-600">{r.reference}</Td>
                 <Td className="font-semibold text-gray-900">{r.consumerName}</Td>
                 <Td>{r.institutionName}</Td>
@@ -72,9 +75,10 @@ export default function CreditReports() {
                 <Td className="text-muted-foreground">{fmtWhen(r.createdAt)}</Td>
                 <Td className={cn('text-muted-foreground', r.generationMs > 4000 && 'text-rose-600 font-semibold')}>{(r.generationMs / 1000).toFixed(1)}s</Td>
                 <Td><Badge tone={statusTone[r.status]}>{r.status}</Badge></Td>
+                <Td><span className="text-xs font-semibold text-blue-600">Open →</span></Td>
               </tr>
             ))}
-            {reports.length === 0 && <tr><Td colSpan={8} className="text-center text-muted-foreground">No reports for this filter.</Td></tr>}
+            {reports.length === 0 && <tr><Td colSpan={9} className="text-center text-muted-foreground">No reports for this filter.</Td></tr>}
           </Table>
           <Pager page={page} total={total} limit={LIMIT} onPage={onPage} />
         </Panel>
