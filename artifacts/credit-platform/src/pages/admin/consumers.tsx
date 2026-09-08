@@ -49,7 +49,24 @@ function ConsumerFile({ id, onBack, onChanged }: { id: string; onBack: () => voi
 
   if (!data) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>;
 
-  const { customer: c, loans, scores, inquiries, reports, consents, disputes, totals } = data;
+  // Tolerate a leaner payload (e.g. an API server that predates the enriched endpoint)
+  const {
+    customer: c, loans = [], scores = [], inquiries = [],
+    reports = [], consents = [], disputes = [],
+  } = data;
+  const totals = data.totals ?? {
+    tradelines: loans.length,
+    institutions: new Set(loans.map((l: any) => l.institution)).size,
+    active: loans.filter((l: any) => l.status === 'active').length,
+    defaulted: loans.filter((l: any) => ['defaulted', 'written_off'].includes(l.status)).length,
+    closed: loans.filter((l: any) => l.status === 'closed').length,
+    principal: loans.reduce((a: number, l: any) => a + Number(l.amount), 0),
+    outstanding: loans.filter((l: any) => l.status !== 'closed').reduce((a: number, l: any) => a + Number(l.outstandingBalance), 0),
+    missedPayments: loans.reduce((a: number, l: any) => a + l.missedPayments, 0),
+    hardInquiries90d: inquiries.filter((i: any) => i.kind === 'hard').length,
+    activeConsents: consents.filter((k: any) => k.status === 'active').length,
+    openDisputes: disputes.filter((d: any) => !d.resolved_at).length,
+  };
   const latest = scores[0] ? Math.round(Number(scores[0].score)) : null;
   const initials = `${c.firstName[0] ?? ''}${c.lastName[0] ?? ''}`;
   const history = [...scores].reverse().map((s: any) => ({

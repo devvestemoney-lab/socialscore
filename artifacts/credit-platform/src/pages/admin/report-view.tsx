@@ -42,7 +42,22 @@ export function AdminReportView({ id, onBack }: { id: string; onBack: () => void
   if (missing) return <Panel padded><p className="text-center text-muted-foreground py-10">Report not found.</p></Panel>;
   if (!data) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>;
 
-  const { report, customer: c, tenant, latestScore, scoreHistory, loans, inquiries, consent, totals } = data;
+  const {
+    report, customer: c, tenant = null, latestScore = null,
+    scoreHistory = [], loans = [], inquiries = [],
+  } = data;
+  const consent = data.consent ?? { active: 0, forRequester: 0, latestExpiry: null };
+  const totals = data.totals ?? {
+    tradelines: loans.length,
+    institutions: new Set(loans.map((l: any) => l.institution)).size,
+    activeLoans: loans.filter((l: any) => l.status === 'active').length,
+    defaulted: loans.filter((l: any) => ['defaulted', 'written_off'].includes(l.status)).length,
+    closed: loans.filter((l: any) => l.status === 'closed').length,
+    totalPrincipal: loans.reduce((a: number, l: any) => a + Number(l.amount), 0),
+    totalOutstanding: loans.filter((l: any) => l.status !== 'closed').reduce((a: number, l: any) => a + Number(l.outstandingBalance), 0),
+    missedPayments12m: loans.reduce((a: number, l: any) => a + l.missedPayments, 0),
+    hardInquiries90d: inquiries.filter((i: any) => i.kind === 'hard').length,
+  };
   const score = latestScore ? Math.round(Number(latestScore.score)) : null;
   const breakdown = latestScore?.scoreBreakdown ?? null;
   const initials = `${c.firstName[0] ?? ''}${c.lastName[0] ?? ''}`;
