@@ -3,7 +3,7 @@ import { Link } from 'wouter';
 import { Logo, NAVY, GREEN } from '@/components/brand';
 import {
   Fingerprint, ArrowLeft, ArrowRight, Loader2, ShieldCheck, Smartphone,
-  Eye, FileText, Bell, Info,
+  Eye, FileText, Bell, Info, UserPlus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -17,8 +17,20 @@ const BENEFITS = [
   { icon: ShieldCheck, t: 'Control who sees your data', d: 'Grant and withdraw consent, and dispute anything wrong' },
 ];
 
+const PROVINCES = ['Lusaka', 'Copperbelt', 'Central', 'Eastern', 'Luapula',
+  'Muchinga', 'Northern', 'North-Western', 'Southern', 'Western'];
+
+const fieldCls = 'w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/60 text-gray-900 text-sm outline-none transition focus:bg-white focus:ring-2 focus:ring-green-600/25 focus:border-green-600';
+
+const EMPTY_REG = {
+  firstName: '', lastName: '', phone: '', dateOfBirth: '',
+  province: '', email: '', consent: false,
+};
+
 export default function ConsumerLogin() {
-  const [step, setStep] = useState<'nrc' | 'otp'>('nrc');
+  const [step, setStep] = useState<'nrc' | 'register' | 'otp'>('nrc');
+  const [reg, setReg] = useState(EMPTY_REG);
+  const [canRegister, setCanRegister] = useState(false);
   const [nrc, setNrc] = useState('');
   const [code, setCode] = useState('');
   const [hint, setHint] = useState<any>(null);
@@ -43,7 +55,12 @@ export default function ConsumerLogin() {
     });
     const body = await res.json();
     setBusy(false);
-    if (!res.ok) { setError(body.message ?? 'Could not send a passcode'); return; }
+    if (!res.ok) {
+      setError(body.message ?? 'Could not send a passcode');
+      setCanRegister(Boolean(body.canRegister));
+      return;
+    }
+    setCanRegister(false);
     setHint(body); setStep('otp'); setSeconds(60); setCode('');
     setTimeout(() => otpRef.current?.focus(), 60);
   }
@@ -61,6 +78,29 @@ export default function ConsumerLogin() {
     localStorage.setItem('credit_platform_token', body.token);
     localStorage.setItem('credit_platform_user', JSON.stringify(body.user));
     window.location.href = `${BASE}/my`;
+  }
+
+  const regValid =
+    reg.firstName.trim().length >= 2 && reg.lastName.trim().length >= 2 &&
+    /^\+?\d[\d\s-]{7,}$/.test(reg.phone.trim()) && /^\d{4}-\d{2}-\d{2}$/.test(reg.dateOfBirth) &&
+    reg.province !== '' && reg.consent && nrcValid;
+
+  async function register(e?: React.FormEvent) {
+    e?.preventDefault();
+    setBusy(true); setError('');
+    const res = await fetch(`${API}/auth/consumer/register`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...reg, nrc: nrc.trim() }),
+    });
+    const body = await res.json();
+    setBusy(false);
+    if (!res.ok) {
+      setError(body.message ?? 'Could not open your credit file');
+      if (body.field === 'nrc' && res.status === 409) { setStep('nrc'); setCanRegister(false); }
+      return;
+    }
+    setHint(body); setStep('otp'); setSeconds(60); setCode('');
+    setTimeout(() => otpRef.current?.focus(), 60);
   }
 
   return (
@@ -138,6 +178,93 @@ export default function ConsumerLogin() {
                       {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Send passcode <ArrowRight className="w-4 h-4" /></>}
                     </button>
                   </form>
+
+                  <div className="mt-6 pt-5 border-t border-slate-100">
+                    {canRegister ? (
+                      <button onClick={() => { setStep('register'); setError(''); }}
+                        className="w-full py-3 rounded-xl border-2 text-sm font-bold flex items-center justify-center gap-2 transition hover:bg-green-50"
+                        style={{ borderColor: GREEN, color: GREEN }}>
+                        <UserPlus className="w-4 h-4" /> Open my credit file
+                      </button>
+                    ) : (
+                      <p className="text-center text-[13px] text-gray-500">
+                        No credit file yet?{' '}
+                        <button onClick={() => { setStep('register'); setError(''); }}
+                          className="font-bold hover:underline" style={{ color: GREEN }}>Register free</button>
+                      </p>
+                    )}
+                  </div>
+                </>
+              ) : step === 'register' ? (
+                <>
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5"
+                    style={{ background: 'rgba(22,163,74,0.09)', border: '1px solid rgba(22,163,74,0.2)' }}>
+                    <UserPlus className="w-5 h-5" style={{ color: GREEN }} />
+                  </div>
+                  <h2 className="font-display font-extrabold text-2xl" style={{ color: NAVY }}>Open your credit file</h2>
+                  <p className="text-sm text-gray-500 mt-1.5 mb-6">
+                    Give us the details on your NRC. We'll text a passcode to confirm the number is yours.
+                  </p>
+                  {error && <div className="mb-5 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm">{error}</div>}
+                  <form onSubmit={register} className="space-y-3.5">
+                    <div>
+                      <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">NRC number</label>
+                      <input value={nrc} onChange={e => setNrc(e.target.value)} placeholder="123456/78/1"
+                        className={cn(fieldCls, 'font-mono', nrc && !nrcValid && 'border-amber-400')} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">First name</label>
+                        <input value={reg.firstName} onChange={e => setReg(r => ({ ...r, firstName: e.target.value }))} className={fieldCls} />
+                      </div>
+                      <div>
+                        <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">Surname</label>
+                        <input value={reg.lastName} onChange={e => setReg(r => ({ ...r, lastName: e.target.value }))} className={fieldCls} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">Mobile number</label>
+                      <input value={reg.phone} onChange={e => setReg(r => ({ ...r, phone: e.target.value }))}
+                        placeholder="+260 97 123 4567" className={fieldCls} />
+                      <p className="text-[11px] text-gray-400 mt-1">Your passcode is sent here every time you sign in</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">Date of birth</label>
+                        <input type="date" value={reg.dateOfBirth} onChange={e => setReg(r => ({ ...r, dateOfBirth: e.target.value }))} className={fieldCls} />
+                      </div>
+                      <div>
+                        <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">Province</label>
+                        <select value={reg.province} onChange={e => setReg(r => ({ ...r, province: e.target.value }))} className={fieldCls}>
+                          <option value="">Choose…</option>
+                          {PROVINCES.map(p => <option key={p}>{p}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
+                        Email <span className="font-normal text-gray-400">(optional)</span>
+                      </label>
+                      <input type="email" value={reg.email} onChange={e => setReg(r => ({ ...r, email: e.target.value }))} className={fieldCls} />
+                    </div>
+                    <label className="flex items-start gap-2.5 pt-1 cursor-pointer">
+                      <input type="checkbox" checked={reg.consent} onChange={e => setReg(r => ({ ...r, consent: e.target.checked }))}
+                        className="mt-0.5 w-4 h-4 rounded accent-green-600" />
+                      <span className="text-[12px] text-gray-600 leading-relaxed">
+                        I agree to Social Score holding my credit information and sharing it with licensed
+                        lenders when I give permission, under the Data Protection Act (2021).
+                      </span>
+                    </label>
+                    <button type="submit" disabled={!regValid || busy}
+                      className="w-full py-3.5 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 transition hover:brightness-110 disabled:opacity-40 shadow-lg shadow-green-600/25"
+                      style={{ background: GREEN }}>
+                      {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Create my file <ArrowRight className="w-4 h-4" /></>}
+                    </button>
+                  </form>
+                  <button onClick={() => { setStep('nrc'); setError(''); }}
+                    className="mt-5 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 font-medium">
+                    <ArrowLeft className="w-3.5 h-3.5" /> I already have a file
+                  </button>
                 </>
               ) : (
                 <>
@@ -145,8 +272,11 @@ export default function ConsumerLogin() {
                     style={{ background: 'rgba(22,163,74,0.09)', border: '1px solid rgba(22,163,74,0.2)' }}>
                     <Smartphone className="w-5 h-5" style={{ color: GREEN }} />
                   </div>
-                  <h2 className="font-display font-extrabold text-2xl" style={{ color: NAVY }}>Enter your passcode</h2>
+                  <h2 className="font-display font-extrabold text-2xl" style={{ color: NAVY }}>
+                    {hint?.registered ? 'Confirm your number' : 'Enter your passcode'}
+                  </h2>
                   <p className="text-sm text-gray-500 mt-1.5 mb-6">
+                    {hint?.registered && <>Your credit file is open. </>}
                     We sent a 6-digit code to <b className="text-gray-700">{hint?.phoneHint}</b>. It expires in {hint?.expiresInMinutes} minutes.
                   </p>
                   {error && <div className="mb-5 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm">{error}</div>}

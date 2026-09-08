@@ -15,37 +15,92 @@ router.get("/", requireAuth, requireRole("super_admin"), async (_req, res) => {
   res.json({ tenants: tenants.map(formatTenant), total: tenants.length });
 });
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const TENANT_TYPES = ["bank", "mfi", "fintech", "mno"];
+const MIN_PASSWORD = 8;
+
 router.post("/", requireAuth, requireRole("super_admin"), async (req, res) => {
-  const { name, code, type, contactEmail, adminName, adminPassword, settings, kyb } = req.body;
-  if (!name || !code || !type || !contactEmail || !adminName || !adminPassword) {
-    res.status(400).json({ error: "Bad Request", message: "Missing required fields" });
-    return;
-  }
+  const name = String(req.body?.name ?? "").trim();
+  const code = String(req.body?.code ?? "").trim().toUpperCase();
+  const type = String(req.body?.type ?? "").trim();
+  const contactEmail = String(req.body?.contactEmail ?? "").trim().toLowerCase();
+  const adminName = String(req.body?.adminName ?? "").trim();
+  const adminPassword = String(req.body?.adminPassword ?? "");
+  const { settings, kyb } = req.body ?? {};
+
+  const reject = (message: string, field: string, status = 400): void => {
+    res.status(status).json({ error: status === 409 ? "Conflict" : "Bad Request", message, field });
+  };
+
+  if (!name) return reject("Enter the institution's registered name", "name");
+  if (!code) return reject("Enter a short tenant code", "code");
+  if (!/^[A-Z0-9_-]{2,12}$/.test(code))
+    return reject("The tenant code must be 2–12 characters, letters and digits only", "code");
+  if (!TENANT_TYPES.includes(type))
+    return reject(`Choose an institution type (${TENANT_TYPES.join(", ")})`, "type");
+  if (!EMAIL_RE.test(contactEmail))
+    return reject("Enter a valid contact email — the tenant administrator signs in with it", "contactEmail");
+  if (!adminName) return reject("Enter the tenant administrator's name", "adminName");
+  if (adminPassword.length < MIN_PASSWORD)
+    return reject(`The temporary password must be at least ${MIN_PASSWORD} characters`, "adminPassword");
+
+  // Check what already exists first, so the caller gets a message naming the
+  // field rather than a unique-constraint failure.
+  const [codeTaken] = await db.select({ id: tenantsTable.id }).from(tenantsTable)
+    .where(eq(tenantsTable.code, code)).limit(1);
+  if (codeTaken) return reject(`Tenant code ${code} is already in use`, "code", 409);
+
+  const [emailTaken] = await db.select({ id: usersTable.id }).from(usersTable)
+    .where(eq(usersTable.email, contactEmail)).limit(1);
+  if (emailTaken)
+    return reject(`${contactEmail} already has an account on the platform`, "contactEmail", 409);
 
   const apiKey = `zc_${crypto.randomBytes(32).toString("hex")}`;
 
-  const [tenant] = await db.insert(tenantsTable).values({
-    name, code, type, contactEmail, apiKey,
-    kyb: kyb ?? null,
-    kybStatus: "pending",
-    settings: settings || {
-      scoringModel: "standard",
-      maxLoanAmount: 100000,
-      requireConsent: true,
-      allowedDataTypes: ["bank_data", "mobile_money", "mfi_loans", "credit_history"],
-    },
-  }).returning();
+  try {
+    // One transaction: a tenant is only onboarded if its administrator account
+    // is created too, otherwise nobody can sign in to it.
+    const tenant = await db.transaction(async (tx) => {
+      const [created] = await tx.insert(tenantsTable).values({
+        name, code, type: type as "bank" | "mfi" | "fintech" | "mno",
+        contactEmail, apiKey,
+        kyb: kyb ?? null,
+        kybStatus: "pending",
+        settings: settings || {
+          scoringModel: "standard",
+          maxLoanAmount: 100000,
+          requireConsent: true,
+          allowedDataTypes: ["bank_data", "mobile_money", "mfi_loans", "credit_history"],
+        },
+      }).returning();
 
-  // Create admin user for the tenant
-  await db.insert(usersTable).values({
-    email: contactEmail,
-    passwordHash: hashPassword(adminPassword),
-    name: adminName,
-    role: "tenant_admin",
-    tenantId: tenant.id,
-  });
+      await tx.insert(usersTable).values({
+        email: contactEmail,
+        passwordHash: hashPassword(adminPassword),
+        name: adminName,
+        role: "tenant_admin",
+        tenantId: created.id,
+      });
 
-  res.status(201).json(formatTenant(tenant));
+      return created;
+    });
+
+    res.status(201).json({
+      ...formatTenant(tenant),
+      apiKey,
+      admin: { name: adminName, email: contactEmail, role: "tenant_admin" },
+    });
+  } catch (err) {
+    // Anything left — a racing duplicate, a bad enum — rolls the whole thing back.
+    const detail = err instanceof Error ? err.message : String(err);
+    const duplicate = /unique|duplicate key/i.test(detail);
+    res.status(duplicate ? 409 : 500).json({
+      error: duplicate ? "Conflict" : "Internal Server Error",
+      message: duplicate
+        ? "That tenant code or email was registered a moment ago. Try different details."
+        : "The tenant could not be onboarded. Nothing was saved.",
+    });
+  }
 });
 
 router.get("/:tenantId", requireAuth, requireRole("super_admin"), async (req, res) => {

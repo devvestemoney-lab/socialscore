@@ -64,6 +64,110 @@
   --radius: 0.75rem;
 }
 
+
+/* ---------------------------------------------------------------------------
+   Dark theme
+   ---------------------------------------------------------------------------
+   Pages are written in literal light-mode utilities — bg-white, text-gray-900,
+   border-slate-200 — because that is how the design was drawn. Tailwind v4
+   compiles each of those to a CSS variable, so the whole app can be flipped by
+   redefining the neutral ramps here rather than annotating ninety pages with
+   dark: variants.
+
+   The gray and slate scales are inverted end to end: what was the lightest
+   surface becomes the darkest, and what was the darkest text becomes the
+   lightest. --color-white is deliberately left alone — text-white sits on the
+   navy sidebar and on coloured buttons, and must stay white in both themes —
+   so the white surfaces are remapped through the .bg-white rule below.
+   Accent hues (emerald, blue, amber, rose) keep their meaning and are only
+   lifted slightly where they need to hold contrast against a dark ground. */
+.dark {
+  --background: 222 30% 9%;
+  --foreground: 210 20% 94%;
+
+  --card: 222 26% 13%;
+  --card-foreground: 210 20% 94%;
+
+  --popover: 222 26% 13%;
+  --popover-foreground: 210 20% 94%;
+
+  --primary: 228 91% 68%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 222 20% 19%;
+  --secondary-foreground: 210 20% 94%;
+
+  --muted: 222 20% 19%;
+  --muted-foreground: 215 16% 62%;
+
+  --accent: 228 91% 68%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 62% 55%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 222 18% 22%;
+  --input: 222 18% 22%;
+  --ring: 228 91% 68%;
+
+  /* Inverted neutral ramps */
+  --color-gray-50: #0F1420;
+  --color-gray-100: #161C2A;
+  --color-gray-200: #1F2637;
+  --color-gray-300: #2C3446;
+  --color-gray-400: #7C8699;
+  --color-gray-500: #98A1B2;
+  --color-gray-600: #B4BCC9;
+  --color-gray-700: #CFD5DE;
+  --color-gray-800: #E4E8EE;
+  --color-gray-900: #F1F4F8;
+  --color-gray-950: #F8FAFC;
+
+  --color-slate-50: #0F1420;
+  --color-slate-100: #161C2A;
+  --color-slate-200: #232B3D;
+  --color-slate-300: #2F3849;
+  --color-slate-400: #7C8699;
+  --color-slate-500: #98A1B2;
+  --color-slate-600: #B4BCC9;
+  --color-slate-700: #CFD5DE;
+  --color-slate-800: #E4E8EE;
+  --color-slate-900: #F1F4F8;
+  --color-slate-950: #F8FAFC;
+
+  /* Accents, lifted for contrast on a dark ground */
+  --color-emerald-50: #052E22;
+  --color-emerald-700: #34D399;
+  --color-blue-50: #0B1F3D;
+  --color-amber-50: #2A1F05;
+  --color-rose-50: #2B0F16;
+  --color-red-50: #2B0F16;
+  --color-violet-50: #1C1233;
+  --color-indigo-50: #141B3D;
+}
+
+/* bg-white is the card surface everywhere, so it maps to the raised dark
+   surface rather than to --color-white, which text-white still needs. */
+.dark .bg-white {
+  background-color: hsl(var(--card));
+}
+.dark .bg-white\/60,
+.dark .bg-white\/70,
+.dark .bg-white\/80 {
+  background-color: hsl(var(--card) / 0.7);
+}
+
+/* Shadows read as smudges on a dark ground — deepen them instead. */
+.dark .shadow-sm { box-shadow: 0 1px 2px rgb(0 0 0 / 0.4); }
+.dark .shadow, .dark .shadow-md { box-shadow: 0 4px 12px rgb(0 0 0 / 0.45); }
+.dark .shadow-lg, .dark .shadow-xl { box-shadow: 0 12px 32px rgb(0 0 0 / 0.5); }
+
+.dark ::-webkit-scrollbar-thumb { background-color: #2F3849; }
+.dark ::-webkit-scrollbar-thumb:hover { background-color: #3C475C; }
+
+/* Native controls (date pickers, selects, checkboxes) follow the theme. */
+.dark { color-scheme: dark; }
+
 @layer base {
   * {
     @apply border-border;

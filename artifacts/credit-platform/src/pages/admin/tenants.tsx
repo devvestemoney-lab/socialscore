@@ -49,9 +49,18 @@ function OnboardWizard({ onClose, onDone }: { onClose: () => void; onDone: () =>
   const [done, setDone] = useState(false);
   const set = (patch: any) => setW((prev: any) => ({ ...prev, ...patch }));
 
+  // Which wizard step owns each field the API can reject, so a server-side
+  // rejection lands the user on the input that caused it.
+  const STEP_OF_FIELD: Record<string, number> = {
+    name: 0, code: 0, type: 0,
+    contactEmail: 1,
+    adminName: 4, adminPassword: 4,
+  };
+  const emailOk = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v).trim());
+
   const stepValid = () => {
-    if (step === 0) return w.name && w.code && w.licenseNo && w.registrationNo && w.tpin;
-    if (step === 1) return w.contactEmail && w.phone && w.city && w.coName && w.coEmail;
+    if (step === 0) return w.name && /^[A-Za-z0-9_-]{2,12}$/.test(w.code) && w.licenseNo && w.registrationNo && w.tpin;
+    if (step === 1) return emailOk(w.contactEmail) && w.phone && w.city && w.coName && emailOk(w.coEmail);
     if (step === 2) return w.directors.every((d: any) => d.name && d.idNumber) && w.pepDeclared && w.amlPolicyConfirmed;
     if (step === 3) return w.dataTypes.length > 0 && w.purposes.length > 0;
     return w.adminName && w.adminPassword.length >= 8;
@@ -82,7 +91,13 @@ function OnboardWizard({ onClose, onDone }: { onClose: () => void; onDone: () =>
       }),
     });
     setSaving(false);
-    if (!res.ok) { setError((await res.json()).message ?? 'Failed to onboard tenant'); return; }
+    if (!res.ok) {
+      const body = await res.json();
+      setError(body.message ?? 'Failed to onboard tenant');
+      const back = STEP_OF_FIELD[body.field];
+      if (back !== undefined) setStep(back);
+      return;
+    }
     setDone(true);
   }
 
