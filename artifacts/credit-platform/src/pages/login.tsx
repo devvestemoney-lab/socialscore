@@ -72,8 +72,8 @@ export default function LoginPage() {
               One secure gateway to the trust ecosystem
             </h1>
             <p className="mt-4 text-sm leading-relaxed max-w-md" style={{ color: 'rgba(255,255,255,0.6)' }}>
-              Bureau operators, institutions and consumers sign in through a single hardened
-              entry point — with the right workspace served for every role.
+              Bureau operators and member institutions sign in here — with the right
+              workspace served for every role. Consumers use their NRC instead.
             </p>
 
             <div className="mt-9 space-y-5">
@@ -180,6 +180,13 @@ export default function LoginPage() {
                 <Fingerprint className="w-4 h-4" style={{ color: NAVY }} />
                 Continue with Enterprise SSO
               </button>
+
+              <p className="mt-6 pt-5 border-t border-slate-100 text-center text-[13px] text-gray-500">
+                Checking your own credit?{' '}
+                <Link href="/my/login" className="font-bold hover:underline" style={{ color: GREEN }}>
+                  Sign in with your NRC
+                </Link>
+              </p>
             </div>
 
             {/* Demo quick-fill */}

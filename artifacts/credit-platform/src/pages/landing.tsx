@@ -41,7 +41,7 @@ export default function Landing() {
             <Link href="/login" className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-gray-800 hover:bg-slate-50 transition-colors">
               Log In
             </Link>
-            <Link href="/login" className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors hover:brightness-110" style={{ background: GREEN }}>
+            <Link href="/my/login" className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors hover:brightness-110" style={{ background: GREEN }}>
               Sign Up
             </Link>
           </div>
@@ -68,7 +68,7 @@ export default function Landing() {
               you access credit, housing, and more opportunities.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/login" className="px-6 py-3.5 rounded-xl text-sm font-bold text-white shadow-lg shadow-green-600/20 transition-all hover:brightness-110" style={{ background: GREEN }}>
+              <Link href="/my/login" className="px-6 py-3.5 rounded-xl text-sm font-bold text-white shadow-lg shadow-green-600/20 transition-all hover:brightness-110" style={{ background: GREEN }}>
                 Check Your Score
               </Link>
               <a href="#features" className="px-6 py-3.5 rounded-xl text-sm font-bold border-2 transition-colors hover:bg-green-50" style={{ borderColor: GREEN, color: '#15803D' }}>
@@ -128,7 +128,7 @@ export default function Landing() {
                 </li>
               ))}
             </ul>
-            <Link href="/login" className="mt-8 inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-white shadow-lg shadow-green-600/20 transition-all hover:brightness-110" style={{ background: GREEN }}>
+            <Link href="/my/login" className="mt-8 inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-white shadow-lg shadow-green-600/20 transition-all hover:brightness-110" style={{ background: GREEN }}>
               Check Your Score <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
