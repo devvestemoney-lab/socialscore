@@ -48,28 +48,58 @@ export default function LoginPage() {
   return (
     <div className="h-screen flex overflow-hidden" style={{ background: '#F4F6FA' }}>
 
-      {/* ---------- Left: photography ----------
-           The photograph lives at public/images/auth-people.jpg. If it is not
-           there yet the <img> fails quietly and the branded gradient beneath it
-           carries the panel, so the page never shows a broken image. ---------- */}
+      {/* ---------- Left: brand panel ----------
+           A photograph at public/images/auth-people.jpg takes over this panel
+           if one is dropped in; without it the panel stands on its own, so the
+           <img> failing is not a missing state. The motif behind the type is
+           the product's own score arc, drawn oversized and cropped by the
+           panel edge. ---------- */}
       <div className="hidden lg:block w-[46%] xl:w-[48%] relative overflow-hidden shrink-0"
-        style={{ background: `linear-gradient(165deg, #0A1F44 0%, ${NAVY} 55%, #123c74 100%)` }}>
+        style={{ background: `linear-gradient(160deg, #0A1F44 0%, ${NAVY} 58%, #10305e 100%)` }}>
 
         <img src={`${import.meta.env.BASE_URL}images/auth-people.jpg`} alt=""
           onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
           className="absolute inset-0 w-full h-full object-cover object-center" />
 
-        {/* Brand scrim — keeps the logo and footnote legible over any photograph */}
-        <div className="absolute inset-0"
-          style={{ background: `linear-gradient(180deg, rgba(10,31,68,0.55) 0%, rgba(10,31,68,0.15) 38%, rgba(10,31,68,0.82) 100%)` }} />
-        <div className="absolute -bottom-40 -left-24 w-96 h-96 rounded-full opacity-20 blur-3xl" style={{ background: GREEN }} />
+        {/* Oversized score arc, bled off the right edge. Drawn in white with a
+            single green segment — the band colours turn muddy at low opacity
+            over navy, and this reads as an embossed mark instead of a smear. */}
+        <svg viewBox="0 0 200 200" aria-hidden
+          className="absolute -right-[26%] top-1/2 -translate-y-1/2 w-[105%] pointer-events-none">
+          <g fill="none" strokeWidth="8" strokeLinecap="round">
+            {/* One path for the track, so overlapping round caps cannot stack
+                into visible lumps, and a single green tail for the accent. */}
+            <path d="M 26 152 A 74 74 0 0 1 145 47" stroke="rgba(255,255,255,0.08)" />
+            <path d="M 145 47 A 74 74 0 0 1 174 152" stroke={GREEN} strokeOpacity="0.32" />
+          </g>
+        </svg>
 
-        <div className="relative z-10 h-full flex flex-col justify-between p-12 xl:p-14 text-white">
+        <div className="absolute -bottom-40 -left-28 w-[26rem] h-[26rem] rounded-full opacity-[0.18] blur-3xl"
+          style={{ background: GREEN }} />
+
+        {/* Scrim — keeps the type legible whether the panel is a gradient or a photograph */}
+        <div className="absolute inset-0"
+          style={{ background: 'linear-gradient(180deg, rgba(10,31,68,0.5) 0%, rgba(10,31,68,0.1) 34%, rgba(10,31,68,0.88) 100%)' }} />
+
+        <div className="relative z-10 h-full flex flex-col p-12 xl:p-14 text-white">
           <Link href="/"><Logo light /></Link>
-          <p className="flex items-center gap-2 text-[12px]" style={{ color: 'rgba(255,255,255,0.75)' }}>
+
+          <div className="mt-auto max-w-[30rem]">
+            <h2 className="font-display font-extrabold leading-[1.08] text-[2.6rem] xl:text-[3rem]">
+              One record<br />per person.
+            </h2>
+            <p className="mt-5 text-[15px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.62)' }}>
+              Every account, every payment, every dispute — held in one place, and
+              answerable to the person it describes.
+            </p>
+
+          </div>
+
+          <div className="mt-10 pt-6 flex items-center gap-2.5 text-[11.5px] whitespace-nowrap"
+            style={{ borderTop: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)' }}>
             <Globe2 className="w-4 h-4 shrink-0" />
             Licensed by the Bank of Zambia · Data Protection Act compliant · ISO 27001 aligned
-          </p>
+          </div>
         </div>
       </div>
 
