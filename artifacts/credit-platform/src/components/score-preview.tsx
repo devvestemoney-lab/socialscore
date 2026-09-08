@@ -6,16 +6,52 @@ import {
 import { cn } from '@/lib/utils';
 import { Logo, NAVY, GREEN } from '@/components/brand';
 
-/* Hero dashboard preview — trust score gauge */
-function TrustGauge() {
+/* Hero dashboard preview — trust score gauge.
+   The arc is generated from one geometry so the bands share exact boundaries
+   instead of being four eyeballed paths with gaps between them, and the needle
+   angle is derived from the score rather than hand-placed. */
+const GAUGE = { cx: 100, cy: 100, r: 74, width: 15, min: 300, max: 900 };
+
+const BANDS = [
+  { to: 500, color: '#EF4444' },
+  { to: 620, color: '#F97316' },
+  { to: 700, color: '#FACC15' },
+  { to: 900, color: '#16A34A' },
+];
+
+/** Score to degrees, measured anticlockwise from the right of the dial. */
+function angleFor(score: number) {
+  const { min, max } = GAUGE;
+  const t = Math.min(1, Math.max(0, (score - min) / (max - min)));
+  return 180 - t * 180;
+}
+
+function pointAt(deg: number, radius = GAUGE.r) {
+  const rad = (deg * Math.PI) / 180;
+  return [GAUGE.cx + radius * Math.cos(rad), GAUGE.cy - radius * Math.sin(rad)] as const;
+}
+
+function arcPath(fromScore: number, toScore: number) {
+  const [x1, y1] = pointAt(angleFor(fromScore));
+  const [x2, y2] = pointAt(angleFor(toScore));
+  return `M ${x1} ${y1} A ${GAUGE.r} ${GAUGE.r} 0 0 1 ${x2} ${y2}`;
+}
+
+function TrustGauge({ score = 742 }: { score?: number }) {
+  const needle = angleFor(score);
+  const [nx, ny] = pointAt(needle, GAUGE.r * 0.62);
+
   return (
-    <svg viewBox="0 0 200 112" className="w-40 mx-auto">
-      <path d="M 22 100 A 78 78 0 0 1 43 45" fill="none" stroke="#EF4444" strokeWidth="15" strokeLinecap="round" />
-      <path d="M 49 38 A 78 78 0 0 1 84 23" fill="none" stroke="#F97316" strokeWidth="15" strokeLinecap="round" />
-      <path d="M 93 22 A 78 78 0 0 1 130 27" fill="none" stroke="#FACC15" strokeWidth="15" strokeLinecap="round" />
-      <path d="M 138 31 A 78 78 0 0 1 178 100" fill="none" stroke="#16A34A" strokeWidth="15" strokeLinecap="round" />
-      <line x1="100" y1="100" x2="143" y2="53" stroke={NAVY} strokeWidth="5" strokeLinecap="round" />
-      <circle cx="100" cy="100" r="7" fill={NAVY} />
+    <svg viewBox="0 0 200 118" className="w-40 mx-auto">
+      {BANDS.map((band, i) => (
+        <path key={band.color}
+          d={arcPath(i === 0 ? GAUGE.min : BANDS[i - 1].to, band.to)}
+          fill="none" stroke={band.color} strokeWidth={GAUGE.width} strokeLinecap="round" />
+      ))}
+      <line x1={GAUGE.cx} y1={GAUGE.cy} x2={nx} y2={ny}
+        stroke={NAVY} strokeWidth="5" strokeLinecap="round" />
+      <circle cx={GAUGE.cx} cy={GAUGE.cy} r="7" fill={NAVY} />
+      <circle cx={GAUGE.cx} cy={GAUGE.cy} r="2.5" fill="#fff" />
     </svg>
   );
 }
@@ -81,8 +117,8 @@ export function ScorePreview() {
           {/* gauge card */}
           <div className="rounded-xl bg-white border border-slate-200 p-4 text-center">
             <p className="text-[11px] font-semibold text-gray-500 text-left mb-1">Overall Trust Score</p>
-            <TrustGauge />
-            <p className="font-display font-extrabold text-4xl -mt-3" style={{ color: NAVY }}>742</p>
+            <TrustGauge score={742} />
+            <p className="font-display font-extrabold text-4xl mt-1" style={{ color: NAVY }}>742</p>
             <p className="text-sm font-bold inline-flex items-center gap-1" style={{ color: GREEN }}>Good <Info className="w-3 h-3 text-gray-300" /></p>
             <p className="text-[10px] text-gray-400 mt-1">Score range: 300 – 900</p>
             <p className="text-[11px] font-semibold mt-2 inline-flex items-center gap-1" style={{ color: GREEN }}>
