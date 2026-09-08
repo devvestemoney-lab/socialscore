@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/use-auth';
 import type { LoginRequest } from '@workspace/api-client-react';
 import {
   Mail, Lock, Building2, ArrowRight, ArrowLeft, Loader2, CheckCircle2,
-  ShieldCheck, Server, ScrollText, Fingerprint, Globe2, KeyRound,
+  Fingerprint, Globe2, KeyRound,
 } from 'lucide-react';
 import { Logo, NAVY, GREEN } from '@/components/brand';
 
@@ -14,12 +14,6 @@ const DEMO_ROLES = [
   { key: 'customer' as const, label: 'Customer', email: 'customer@zamcredit.zm', password: 'customer123', dot: GREEN },
 ];
 
-const ENTERPRISE_POINTS = [
-  { icon: Fingerprint, t: 'Multi-tenant access control', d: 'Role-based permissions across every institution' },
-  { icon: ShieldCheck, t: 'Bank-level security', d: 'MFA enforcement, encryption at rest and in transit' },
-  { icon: ScrollText, t: 'Audit-ready by design', d: 'Every inquiry and decision is logged and traceable' },
-  { icon: Server, t: '99.9% uptime SLA', d: 'Real-time scoring in under 200ms, around the clock' },
-];
 
 export default function LoginPage() {
   const { loginUser } = useAuth();
@@ -52,55 +46,35 @@ export default function LoginPage() {
     'placeholder:text-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-green-600/25 focus:border-green-600 transition';
 
   return (
-    <div className="min-h-screen flex" style={{ background: '#F4F6FA' }}>
+    <div className="h-screen flex overflow-hidden" style={{ background: '#F4F6FA' }}>
 
-      {/* ---------- Left: enterprise brand panel ---------- */}
-      <div className="hidden lg:flex w-[42%] xl:w-[44%] flex-col relative overflow-hidden text-white"
+      {/* ---------- Left: photography ----------
+           The photograph lives at public/images/auth-people.jpg. If it is not
+           there yet the <img> fails quietly and the branded gradient beneath it
+           carries the panel, so the page never shows a broken image. ---------- */}
+      <div className="hidden lg:block w-[46%] xl:w-[48%] relative overflow-hidden shrink-0"
         style={{ background: `linear-gradient(165deg, #0A1F44 0%, ${NAVY} 55%, #123c74 100%)` }}>
-        {/* decorative grid + glows */}
-        <div className="absolute inset-0 opacity-[0.07]"
-          style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px)', backgroundSize: '44px 44px' }} />
-        <div className="absolute -top-32 -right-32 w-[420px] h-[420px] rounded-full opacity-15 blur-3xl" style={{ background: GREEN }} />
-        <div className="absolute -bottom-40 -left-24 w-96 h-96 rounded-full opacity-10 blur-3xl" style={{ background: '#38BDF8' }} />
 
-        <div className="relative z-10 flex flex-col h-full p-12 xl:p-14">
+        <img src={`${import.meta.env.BASE_URL}images/auth-people.jpg`} alt=""
+          onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+          className="absolute inset-0 w-full h-full object-cover object-center" />
+
+        {/* Brand scrim — keeps the logo and footnote legible over any photograph */}
+        <div className="absolute inset-0"
+          style={{ background: `linear-gradient(180deg, rgba(10,31,68,0.55) 0%, rgba(10,31,68,0.15) 38%, rgba(10,31,68,0.82) 100%)` }} />
+        <div className="absolute -bottom-40 -left-24 w-96 h-96 rounded-full opacity-20 blur-3xl" style={{ background: GREEN }} />
+
+        <div className="relative z-10 h-full flex flex-col justify-between p-12 xl:p-14 text-white">
           <Link href="/"><Logo light /></Link>
-
-          <div className="mt-auto">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: '#4ADE80' }}>Enterprise Console</p>
-            <h1 className="mt-3 font-display font-extrabold text-3xl xl:text-4xl leading-tight">
-              One secure gateway to the trust ecosystem
-            </h1>
-            <p className="mt-4 text-sm leading-relaxed max-w-md" style={{ color: 'rgba(255,255,255,0.6)' }}>
-              Bureau operators and member institutions sign in here — with the right
-              workspace served for every role. Consumers use their NRC instead.
-            </p>
-
-            <div className="mt-9 space-y-5">
-              {ENTERPRISE_POINTS.map(pt => (
-                <div key={pt.t} className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: 'rgba(74,222,128,0.12)', border: '1px solid rgba(74,222,128,0.25)' }}>
-                    <pt.icon className="w-5 h-5" style={{ color: '#4ADE80' }} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold">{pt.t}</p>
-                    <p className="text-[13px] mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>{pt.d}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-12 pt-6 flex items-center gap-2 text-[12px]" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.45)' }}>
+          <p className="flex items-center gap-2 text-[12px]" style={{ color: 'rgba(255,255,255,0.75)' }}>
             <Globe2 className="w-4 h-4 shrink-0" />
             Licensed by the Bank of Zambia · Data Protection Act compliant · ISO 27001 aligned
-          </div>
+          </p>
         </div>
       </div>
 
       {/* ---------- Right: auth ---------- */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* top bar */}
         <div className="flex items-center justify-between px-6 md:px-10 h-[72px]">
           <span className="lg:hidden"><Link href="/"><Logo /></Link></span>
@@ -110,7 +84,7 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        <div className="flex-1 flex items-center justify-center px-4 md:px-8 pb-10">
+        <div className="flex-1 flex items-center justify-center px-4 md:px-8 py-6">
           <div className="w-full max-w-[440px]">
 
             {/* Auth card */}
