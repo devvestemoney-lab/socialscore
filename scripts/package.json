@@ -17,7 +17,8 @@
     "seed:commercial": "tsx ./src/seed-commercial.ts",
     "seed:uploads": "tsx ./src/seed-uploads.ts",
     "seed:webhooks": "tsx ./src/seed-webhooks.ts",
-    "seed:branches": "tsx ./src/seed-branches.ts"
+    "seed:branches": "tsx ./src/seed-branches.ts",
+    "seed:scorecards": "tsx ./src/seed-scorecards.ts"
   },
   "dependencies": {
     "@workspace/db": "workspace:*",
