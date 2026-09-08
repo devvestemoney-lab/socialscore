@@ -74,12 +74,43 @@ router.get("/consumers/:id", ...superAdmin, async (req, res) => {
     res.status(404).json({ error: "Not Found", message: "Consumer not found" });
     return;
   }
-  const [loans, scores, inquiries] = await Promise.all([
+  const [loans, scores, inquiries, reports, consents, disputes] = await Promise.all([
     db.select().from(loansTable).where(eq(loansTable.customerId, customer.id)).orderBy(desc(loansTable.disbursedAt)),
-    db.select().from(creditScoresTable).where(eq(creditScoresTable.customerId, customer.id)).orderBy(desc(creditScoresTable.createdAt)).limit(5),
-    db.select().from(creditInquiriesTable).where(eq(creditInquiriesTable.customerId, customer.id)).orderBy(desc(creditInquiriesTable.createdAt)).limit(10),
+    db.select().from(creditScoresTable).where(eq(creditScoresTable.customerId, customer.id)).orderBy(desc(creditScoresTable.createdAt)).limit(12),
+    db.select().from(creditInquiriesTable).where(eq(creditInquiriesTable.customerId, customer.id)).orderBy(desc(creditInquiriesTable.createdAt)).limit(25),
+    db.select({
+      id: creditReportsTable.id, reference: creditReportsTable.reference,
+      institutionName: creditReportsTable.institutionName, purpose: creditReportsTable.purpose,
+      band: creditReportsTable.band, score: creditReportsTable.score,
+      status: creditReportsTable.status, createdAt: creditReportsTable.createdAt,
+    }).from(creditReportsTable).where(eq(creditReportsTable.customerId, customer.id))
+      .orderBy(desc(creditReportsTable.createdAt)).limit(15),
+    db.execute(sql`
+      select k.id, k.data_type, k.status, k.granted_at, k.expires_at, k.revoked_at,
+             coalesce(t.name, 'All institutions') as institution
+      from consents k left join tenants t on t.id = k.tenant_id
+      where k.customer_id = ${customer.id} order by k.granted_at desc limit 15`).then(r => r.rows),
+    db.execute(sql`
+      select case_no, institution_name, type, status, opened_at, resolved_at
+      from disputes where customer_id = ${customer.id} order by opened_at desc limit 10`).then(r => r.rows),
   ]);
-  res.json({ customer, loans, scores, inquiries });
+
+  const open = loans.filter(l => l.status !== "closed");
+  const totals = {
+    tradelines: loans.length,
+    institutions: new Set(loans.map(l => l.institution)).size,
+    active: loans.filter(l => l.status === "active").length,
+    defaulted: loans.filter(l => ["defaulted", "written_off"].includes(l.status)).length,
+    closed: loans.filter(l => l.status === "closed").length,
+    principal: loans.reduce((a, l) => a + Number(l.amount), 0),
+    outstanding: open.reduce((a, l) => a + Number(l.outstandingBalance), 0),
+    missedPayments: loans.reduce((a, l) => a + l.missedPayments, 0),
+    hardInquiries90d: inquiries.filter(i => i.kind === "hard" && Date.now() - new Date(i.createdAt).getTime() < 90 * 86_400_000).length,
+    activeConsents: (consents as any[]).filter(c => c.status === "active").length,
+    openDisputes: (disputes as any[]).filter(d => !d.resolved_at).length,
+  };
+
+  res.json({ customer, loans, scores, inquiries, reports, consents, disputes, totals });
 });
 
 router.put("/consumers/:id/verify", ...superAdmin, async (req, res) => {
