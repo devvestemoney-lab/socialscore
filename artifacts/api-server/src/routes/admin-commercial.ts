@@ -73,22 +73,86 @@ async function usageFor(period: string) {
 
 router.get("/usage", ...superAdmin, async (req, res) => {
   const period = String(req.query.period ?? thisPeriod());
-  const usage = await usageFor(period);
-  const billable = usage.filter(u => u.planId);
+  const { start, end } = periodRange(period);
+  const isCurrent = period === thisPeriod();
+  const daysInMonth = new Date(end.getTime() - 1).getUTCDate();
+  const daysElapsed = isCurrent ? new Date().getUTCDate() : daysInMonth;
+  const pace = daysElapsed > 0 ? daysInMonth / daysElapsed : 1;
+
+  const [usage, trend] = await Promise.all([
+    usageFor(period),
+    db.execute(sql`
+      select to_char(date_trunc('day', created_at), 'DD Mon') as day,
+             count(*)::int as reports
+      from credit_reports where created_at >= ${start} and created_at < ${end} and status != 'failed'
+      group by date_trunc('day', created_at) order by date_trunc('day', created_at)`).then(r => r.rows),
+  ]);
+
+  // project each tenant to month end and classify quota risk
+  const enriched = usage.map(u => {
+    const projectedReports = Math.round(u.reports * pace);
+    const projectedOverage = Math.max(0, projectedReports - u.includedReports) * u.overageRate;
+    const projectedTotal = round2(u.subscriptionAmount + projectedOverage + u.addonsAmount - u.discountAmount);
+    const projectedQuotaPct = u.includedReports > 0 ? Math.round((projectedReports / u.includedReports) * 100) : 0;
+    const risk = !u.planId ? "unassigned"
+      : u.quotaUsedPct > 100 ? "over"
+      : projectedQuotaPct >= 90 ? "at_risk"
+      : u.includedReports > 0 && projectedQuotaPct < 20 ? "under_utilised"
+      : "healthy";
+    return { ...u, projectedReports, projectedQuotaPct, projectedTotal, risk };
+  });
+
+  const billable = enriched.filter(u => u.planId);
   const summary = {
-    reports: usage.reduce((a, u) => a + u.reports, 0),
-    apiCalls: usage.reduce((a, u) => a + u.apiCalls, 0),
-    inOverage: usage.filter(u => u.overageUnits > 0).length,
-    overageRevenue: round2(usage.reduce((a, u) => a + u.overageAmount, 0)),
-    metered: round2(usage.reduce((a, u) => a + u.total, 0)),
-    unassigned: usage.filter(u => !u.planId).length,
+    reports: enriched.reduce((a, u) => a + u.reports, 0),
+    apiCalls: enriched.reduce((a, u) => a + u.apiCalls, 0),
+    inOverage: enriched.filter(u => u.overageUnits > 0).length,
+    overageRevenue: round2(enriched.reduce((a, u) => a + u.overageAmount, 0)),
+    metered: round2(enriched.reduce((a, u) => a + u.total, 0)),
+    projected: round2(enriched.reduce((a, u) => a + u.projectedTotal, 0)),
+    unassigned: enriched.filter(u => !u.planId).length,
     billableTenants: billable.length,
+    atRisk: enriched.filter(u => u.risk === "at_risk").length,
+    underUtilised: enriched.filter(u => u.risk === "under_utilised").length,
+    avgQuotaUsed: billable.length ? Math.round(billable.reduce((a, u) => a + u.quotaUsedPct, 0) / billable.length) : 0,
+    daysElapsed, daysInMonth, isCurrent,
   };
   const periods = Array.from({ length: 6 }, (_, i) => {
     const d = new Date(); d.setMonth(d.getMonth() - i);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   });
-  res.json({ period, periods, usage, summary });
+  res.json({ period, periods, usage: enriched, summary, trend });
+});
+
+/** Per-tenant consumption detail for a period */
+router.get("/usage/:tenantId", ...superAdmin, async (req, res) => {
+  const period = String(req.query.period ?? thisPeriod());
+  const { start, end } = periodRange(period);
+  const usage = (await usageFor(period)).find(u => u.tenantId === req.params.tenantId);
+  if (!usage) { res.status(404).json({ error: "Not Found", message: "Tenant not found" }); return; }
+
+  const [daily, byPurpose, byBand, [invoice], [prior]] = await Promise.all([
+    db.execute(sql`
+      select to_char(date_trunc('day', created_at), 'DD Mon') as day, count(*)::int as reports
+      from credit_reports where tenant_id = ${req.params.tenantId}
+        and created_at >= ${start} and created_at < ${end} and status != 'failed'
+      group by date_trunc('day', created_at) order by date_trunc('day', created_at)`).then(r => r.rows),
+    db.execute(sql`
+      select purpose, count(*)::int as n from credit_reports
+      where tenant_id = ${req.params.tenantId} and created_at >= ${start} and created_at < ${end}
+      group by purpose order by n desc limit 8`).then(r => r.rows),
+    db.execute(sql`
+      select coalesce(band, 'unscored') as band, count(*)::int as n from credit_reports
+      where tenant_id = ${req.params.tenantId} and created_at >= ${start} and created_at < ${end}
+      group by 1 order by 1`).then(r => r.rows),
+    db.select().from(invoicesTable)
+      .where(and(eq(invoicesTable.tenantId, req.params.tenantId), eq(invoicesTable.period, period))),
+    db.execute(sql`
+      select coalesce(sum(total), 0)::float as total, count(*)::int as invoices
+      from invoices where tenant_id = ${req.params.tenantId}`).then(r => r.rows as any[]),
+  ]);
+
+  res.json({ period, usage, daily, byPurpose, byBand, invoice: invoice ?? null, lifetime: prior });
 });
 
 // ─── PRICING PLANS ───────────────────────────────────────────────────────────
