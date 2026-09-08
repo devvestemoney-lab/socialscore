@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'wouter';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth, type ApiFailure } from '@/hooks/use-auth';
 import {
   LayoutDashboard, Users, LogOut, Activity, ShieldCheck, Building, Menu, X,
   Brain, DollarSign, ShieldAlert, Database, BookOpen, BarChart3, Bell,
@@ -13,15 +13,59 @@ import {
   Zap, Receipt, Building2, GitBranch, KeySquare, Code2, LifeBuoy, Headset,
   FileBarChart2, IdCard, Sparkles, Wallet, History as HistoryIcon,
   BellRing as BellIcon, Download, CreditCard, GraduationCap, HelpCircle,
-  UserCircle, Lock,
+  UserCircle, Lock, ServerCrash, RefreshCw, PlugZap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type NavItem = { icon: React.ElementType; label: string; href: string };
 type NavGroup = { section: string; items: NavItem[] };
 
+/**
+ * Shown in place of the page when its data could not be loaded, so a failed
+ * request surfaces as an explanation rather than an endless spinner.
+ */
+function ApiErrorState({ failure, onRetry }: { failure: ApiFailure; onRetry: () => void }) {
+  const offline = failure.status === 0;
+  const missing = failure.status === 404;
+  const endpoint = failure.url.replace(/^.*\/api/, '/api');
+
+  return (
+    <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
+        style={{ background: offline ? '#EF44441A' : '#F59E0B1A' }}>
+        {offline
+          ? <PlugZap className="w-8 h-8 text-rose-500" />
+          : <ServerCrash className="w-8 h-8 text-amber-500" />}
+      </div>
+      <h2 className="text-xl font-display font-bold text-gray-900">
+        {offline ? "Can't reach the API server" : "This page couldn't load"}
+      </h2>
+      <p className="text-sm text-muted-foreground mt-2 max-w-md">{failure.message}</p>
+
+      <div className="mt-5 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-left max-w-md w-full">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Request</p>
+        <p className="text-xs font-mono text-gray-700 mt-1 break-all">
+          {failure.method} {endpoint} → {offline ? 'no response' : failure.status}
+        </p>
+        <p className="text-[13px] text-muted-foreground mt-3">
+          {offline
+            ? 'The API server is not running, or the port it listens on has changed. Start it and try again.'
+            : missing
+              ? 'The API server is running an older build that does not have this endpoint yet. Rebuild and restart it, then try again.'
+              : 'The API server returned an error. Check its logs for the failing request.'}
+        </p>
+      </div>
+
+      <button onClick={onRetry}
+        className="mt-5 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold">
+        <RefreshCw className="w-4 h-4" /> Try again
+      </button>
+    </div>
+  );
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
-  const { user, logoutUser } = useAuth();
+  const { user, logoutUser, apiFailure, clearApiFailure } = useAuth();
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
@@ -209,22 +253,46 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const dateRange = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
-  // Each page renders its own <Layout>, so navigating recreates the sidebar and
-  // resets its scroll. Persist the offset and restore it before paint.
-  const navRef = React.useRef<HTMLElement | null>(null);
+  // Each page renders its own <Layout>, so navigating tears the sidebar down and
+  // builds a new one whose scroll starts at zero. The offset is saved as the user
+  // scrolls and written back inside the nav's ref callback, which React runs at
+  // commit — before the browser paints — so the list never visibly jumps.
   const NAV_SCROLL_KEY = 'sidebar-scroll';
+  const navRef = React.useRef<HTMLElement | null>(null);
+  const detachScroll = React.useRef<(() => void) | undefined>(undefined);
 
-  React.useLayoutEffect(() => {
-    const el = navRef.current;
+  const attachNav = React.useCallback((el: HTMLElement | null) => {
+    detachScroll.current?.();
+    detachScroll.current = undefined;
+    navRef.current = el;
     if (!el) return;
-    const saved = Number(sessionStorage.getItem(NAV_SCROLL_KEY) ?? 0);
-    if (saved > 0) el.scrollTop = saved;
+
+    el.scrollTop = Number(sessionStorage.getItem(NAV_SCROLL_KEY) ?? 0);
+
     const onScroll = () => sessionStorage.setItem(NAV_SCROLL_KEY, String(el.scrollTop));
     el.addEventListener('scroll', onScroll, { passive: true });
-    return () => el.removeEventListener('scroll', onScroll);
-  }, [location]);
+    detachScroll.current = () => el.removeEventListener('scroll', onScroll);
+  }, []);
 
-  const SidebarInner = () => (
+  React.useEffect(() => () => detachScroll.current?.(), []);
+
+  // Only pull the active item into view when the restored offset leaves it off
+  // screen — which happens when a page is opened directly by URL, not when the
+  // user clicked an item they were already looking at.
+  const revealActive = React.useCallback((el: HTMLAnchorElement | null) => {
+    const nav = navRef.current;
+    if (!el || !nav) return;
+    const top = el.offsetTop;
+    if (top < nav.scrollTop || top > nav.scrollTop + nav.clientHeight - 48) {
+      nav.scrollTop = Math.max(0, top - nav.clientHeight / 2);
+      sessionStorage.setItem(NAV_SCROLL_KEY, String(nav.scrollTop));
+    }
+  }, []);
+
+  // A failure belongs to the page that caused it, so drop it on navigation.
+  React.useEffect(() => { clearApiFailure(); }, [location]);
+
+  const sidebarInner = (
     <>
       {/* Logo */}
       <div className="px-5 pt-6 pb-5 flex items-center gap-3">
@@ -241,7 +309,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Nav groups */}
-      <nav ref={navRef} className="flex-1 px-3 overflow-y-auto pb-4">
+      <nav ref={attachNav} className="flex-1 px-3 overflow-y-auto pb-4">
         {navGroups.map(group => (
           <div key={group.section} className="mb-2">
             <p className="px-3 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-widest"
@@ -253,15 +321,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 const active = isActive(item.href);
                 return (
                   <Link key={item.href} href={item.href}
-                    ref={active ? (el: HTMLAnchorElement | null) => {
-                      if (el && navRef.current) {
-                        const nav = navRef.current;
-                        const top = el.offsetTop;
-                        if (top < nav.scrollTop || top > nav.scrollTop + nav.clientHeight - 48) {
-                          nav.scrollTop = Math.max(0, top - nav.clientHeight / 2);
-                        }
-                      }
-                    } : undefined}
+                    ref={active ? revealActive : undefined}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={cn(
                       'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
@@ -307,7 +367,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Sidebar — desktop */}
       <aside className="hidden md:flex w-64 flex-col shrink-0 relative z-10"
         style={{ background: '#111827', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
-        <SidebarInner />
+        {sidebarInner}
       </aside>
 
       {/* Sidebar — mobile */}
@@ -319,7 +379,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <button className="absolute top-4 right-4 text-white/60" onClick={() => setIsMobileMenuOpen(false)}>
               <X className="w-5 h-5" />
             </button>
-            <SidebarInner />
+            {sidebarInner}
           </aside>
         </div>
       )}
@@ -353,7 +413,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-          {children}
+          {apiFailure
+            ? <ApiErrorState failure={apiFailure} onRetry={() => window.location.reload()} />
+            : children}
           <p className="text-center text-xs text-gray-400 mt-10 pb-4">
             © {new Date().getFullYear()} Social Score. All rights reserved.
             <span className="mx-2">·</span> Enterprise Credit Intelligence Platform
