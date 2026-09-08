@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health.js";
 import authRouter from "./auth.js";
+import consumerAuthRouter from "./consumer-auth.js";
 import identityRouter from "./identity.js";
 import creditRouter from "./credit.js";
 import loansRouter from "./loans.js";
@@ -32,11 +33,13 @@ import tenantDataRouter from "./tenant-data.js";
 import tenantApiRouter from "./tenant-api.js";
 import tenantAdminRouter from "./tenant-admin.js";
 import customerPortalRouter from "./customer-portal.js";
+import consumerRouter from "./consumer.js";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use("/auth", authRouter);
+router.use("/auth/consumer", consumerAuthRouter);
 router.use("/identity", identityRouter);
 router.use("/credit-score", creditRouter);
 router.use("/loan-exposure", loansRouter);
@@ -67,6 +70,7 @@ router.use("/tenant", tenantBillingRouter);
 router.use("/tenant", tenantDataRouter);
 router.use("/tenant", tenantApiRouter);
 router.use("/tenant", tenantAdminRouter);
+router.use("/consumer", consumerRouter);
 router.use("/customer", customerPortalRouter);
 
 export default router;

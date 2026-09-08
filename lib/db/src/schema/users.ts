@@ -3,6 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { tenantsTable } from "./tenants";
 import { rolesTable } from "./roles";
+import { customersTable } from "./customers";
 
 export const usersTable = pgTable("users", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -12,6 +13,7 @@ export const usersTable = pgTable("users", {
   role: text("role", { enum: ["super_admin", "tenant_admin", "tenant_user", "customer"] }).notNull(),
   tenantId: text("tenant_id").references(() => tenantsTable.id, { onDelete: "cascade" }),
   roleId: text("role_id").references(() => rolesTable.id, { onDelete: "set null" }),
+  customerId: text("customer_id").references(() => customersTable.id, { onDelete: "cascade" }),
   status: text("status", { enum: ["active", "invited", "suspended"] }).notNull().default("active"),
   mfaEnabled: boolean("mfa_enabled").notNull().default(false),
   lastLoginAt: timestamp("last_login_at"),

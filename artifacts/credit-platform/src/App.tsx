@@ -98,6 +98,26 @@ import ConsentPortal from "@/pages/customer/consent";
 
 import NotFound from "@/pages/not-found";
 
+import ConsumerLogin from "@/pages/consumer/login";
+import MyDashboard from "@/pages/consumer/dashboard";
+import MyCreditProfile from "@/pages/consumer/profile";
+import MyCreditReport from "@/pages/consumer/report";
+import MyCreditScore from "@/pages/consumer/score";
+import ScoreSimulator from "@/pages/consumer/simulator";
+import MyAccounts from "@/pages/consumer/accounts";
+import MyInquiries from "@/pages/consumer/inquiries";
+import MyCreditHistory from "@/pages/consumer/history";
+import MyAlerts from "@/pages/consumer/alerts";
+import MyDisputes from "@/pages/consumer/disputes";
+import MyConsent from "@/pages/consumer/consent";
+import DownloadReport from "@/pages/consumer/download";
+import MyReportHistory from "@/pages/consumer/report-history";
+import MyPayments from "@/pages/consumer/payments";
+import CreditEducation from "@/pages/consumer/education";
+import ConsumerFaqs from "@/pages/consumer/faqs";
+import MyAccountProfile from "@/pages/consumer/account";
+import MySecurity from "@/pages/consumer/security";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -117,13 +137,15 @@ function ProtectedRoute({ component: Component, allowedRoles }: { component: any
   );
 
   if (!isAuthenticated) {
-    window.location.href = '/login';
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    window.location.href = window.location.pathname.includes('/my')
+      ? `${base}/my/login` : `${base}/login`;
     return null;
   }
 
   if (user && !allowedRoles.includes(user.role)) {
     if (user.role === 'super_admin') window.location.href = '/admin';
-    else if (user.role === 'customer') window.location.href = '/consent';
+    else if (user.role === 'customer') window.location.href = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/my`;
     else window.location.href = '/dashboard';
     return null;
   }
@@ -236,6 +258,27 @@ function Router() {
 
       {/* Customer Routes */}
       <Route path="/consent">{() => <ProtectedRoute component={ConsentPortal} allowedRoles={CUSTOMER} />}</Route>
+
+      {/* Consumer Portal */}
+      <Route path="/my/login" component={ConsumerLogin} />
+      <Route path="/my">{() => <ProtectedRoute component={MyDashboard} allowedRoles={CUSTOMER} />}</Route>
+      <Route path="/my/profile">{() => <ProtectedRoute component={MyCreditProfile} allowedRoles={CUSTOMER} />}</Route>
+      <Route path="/my/report">{() => <ProtectedRoute component={MyCreditReport} allowedRoles={CUSTOMER} />}</Route>
+      <Route path="/my/score">{() => <ProtectedRoute component={MyCreditScore} allowedRoles={CUSTOMER} />}</Route>
+      <Route path="/my/simulator">{() => <ProtectedRoute component={ScoreSimulator} allowedRoles={CUSTOMER} />}</Route>
+      <Route path="/my/accounts">{() => <ProtectedRoute component={MyAccounts} allowedRoles={CUSTOMER} />}</Route>
+      <Route path="/my/inquiries">{() => <ProtectedRoute component={MyInquiries} allowedRoles={CUSTOMER} />}</Route>
+      <Route path="/my/history">{() => <ProtectedRoute component={MyCreditHistory} allowedRoles={CUSTOMER} />}</Route>
+      <Route path="/my/alerts">{() => <ProtectedRoute component={MyAlerts} allowedRoles={CUSTOMER} />}</Route>
+      <Route path="/my/disputes">{() => <ProtectedRoute component={MyDisputes} allowedRoles={CUSTOMER} />}</Route>
+      <Route path="/my/consent">{() => <ProtectedRoute component={MyConsent} allowedRoles={CUSTOMER} />}</Route>
+      <Route path="/my/download">{() => <ProtectedRoute component={DownloadReport} allowedRoles={CUSTOMER} />}</Route>
+      <Route path="/my/report-history">{() => <ProtectedRoute component={MyReportHistory} allowedRoles={CUSTOMER} />}</Route>
+      <Route path="/my/payments">{() => <ProtectedRoute component={MyPayments} allowedRoles={CUSTOMER} />}</Route>
+      <Route path="/my/education">{() => <ProtectedRoute component={CreditEducation} allowedRoles={CUSTOMER} />}</Route>
+      <Route path="/my/faqs">{() => <ProtectedRoute component={ConsumerFaqs} allowedRoles={CUSTOMER} />}</Route>
+      <Route path="/my/account">{() => <ProtectedRoute component={MyAccountProfile} allowedRoles={CUSTOMER} />}</Route>
+      <Route path="/my/security">{() => <ProtectedRoute component={MySecurity} allowedRoles={CUSTOMER} />}</Route>
 
       <Route component={NotFound} />
     </Switch>

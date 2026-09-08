@@ -11,7 +11,9 @@ import {
   UploadCloud as UploadIcon, HardDriveUpload, History, ListX, SearchCheck,
   CheckCircle2, Timer, BellRing, TrendingDown, SlidersHorizontal, Webhook,
   Zap, Receipt, Building2, GitBranch, KeySquare, Code2, LifeBuoy, Headset,
-  FileBarChart2,
+  FileBarChart2, IdCard, Sparkles, Wallet, History as HistoryIcon,
+  BellRing as BellIcon, Download, CreditCard, GraduationCap, HelpCircle,
+  UserCircle, Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -77,8 +79,37 @@ export function Layout({ children }: { children: React.ReactNode }) {
     }
     if (user?.role === 'customer') {
       return [
-        { section: 'My Portal', items: [
-          { icon: ShieldCheck, label: 'Consent & Reports', href: '/consent' },
+        { section: 'Overview', items: [
+          { icon: LayoutDashboard, label: 'My Dashboard', href: '/my' },
+        ]},
+        { section: 'My Credit', items: [
+          { icon: IdCard, label: 'My Credit Profile', href: '/my/profile' },
+          { icon: FileText, label: 'My Credit Report', href: '/my/report' },
+          { icon: Gauge, label: 'My Credit Score', href: '/my/score' },
+          { icon: Sparkles, label: 'Score Simulator', href: '/my/simulator' },
+        ]},
+        { section: 'Credit Activity', items: [
+          { icon: Wallet, label: 'My Credit Accounts', href: '/my/accounts' },
+          { icon: FileSearch, label: 'Credit Inquiries', href: '/my/inquiries' },
+          { icon: HistoryIcon, label: 'Credit History', href: '/my/history' },
+        ]},
+        { section: 'Protection & Control', items: [
+          { icon: BellIcon, label: 'Credit Alerts', href: '/my/alerts' },
+          { icon: Scale, label: 'Disputes & Corrections', href: '/my/disputes' },
+          { icon: ClipboardCheck, label: 'Consent & Data Access', href: '/my/consent' },
+        ]},
+        { section: 'Services', items: [
+          { icon: Download, label: 'Download My Report', href: '/my/download' },
+          { icon: ScrollText, label: 'Report History', href: '/my/report-history' },
+          { icon: CreditCard, label: 'Payments', href: '/my/payments' },
+        ]},
+        { section: 'Learn', items: [
+          { icon: GraduationCap, label: 'Credit Education', href: '/my/education' },
+          { icon: HelpCircle, label: 'FAQs', href: '/my/faqs' },
+        ]},
+        { section: 'Account', items: [
+          { icon: UserCircle, label: 'My Profile', href: '/my/account' },
+          { icon: Lock, label: 'Security & Settings', href: '/my/security' },
         ]},
       ];
     }

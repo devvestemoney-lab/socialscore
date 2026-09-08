@@ -22,3 +22,4 @@ export * from "./data_uploads";
 export * from "./tenant_integrations";
 export * from "./tenant_admin";
 export * from "./scorecards";
+export * from "./consumer_portal";

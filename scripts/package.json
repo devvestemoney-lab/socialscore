@@ -18,7 +18,9 @@
     "seed:uploads": "tsx ./src/seed-uploads.ts",
     "seed:webhooks": "tsx ./src/seed-webhooks.ts",
     "seed:branches": "tsx ./src/seed-branches.ts",
-    "seed:scorecards": "tsx ./src/seed-scorecards.ts"
+    "seed:scorecards": "tsx ./src/seed-scorecards.ts",
+    "seed:consumer": "tsx ./src/seed-consumer.ts",
+    "seed:consumer-scores": "tsx ./src/seed-consumer-scores.ts"
   },
   "dependencies": {
     "@workspace/db": "workspace:*",
