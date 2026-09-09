@@ -3,10 +3,14 @@ import { Layout } from '@/components/layout';
 import { PageHeader, Panel, Badge, Bar, Toggle } from '@/components/admin/page-kit';
 import { useAuth } from '@/hooks/use-auth';
 import { Sparkles, TrendingUp, TrendingDown, Loader2, Info, RotateCcw } from 'lucide-react';
-import { API, BAND_COLOR, FACTOR_HINTS } from './kit';
+import { API, BAND_COLOR, DIMENSION_META } from './kit';
 import { cn } from '@/lib/utils';
 
-const EMPTY = { settleArrears: false, payDownPct: 0, monthsOnTime: 0, newLoan: false, closeOldest: false, extraInquiries: 0 };
+const EMPTY = {
+  settleArrears: false, payDownPct: 0, monthsOnTime: 0,
+  payRentOnTime: 0, payBillsOnTime: 0, finishInstalments: false, stayInJob: 0,
+  newLoan: false, closeOldest: false, extraInquiries: 0,
+};
 
 export default function ScoreSimulator() {
   const { request } = useAuth();
@@ -65,6 +69,48 @@ export default function ScoreSimulator() {
                 </div>
                 <input type="range" min={0} max={12} value={form.monthsOnTime}
                   onChange={e => set({ monthsOnTime: Number(e.target.value) })} className="w-full accent-emerald-600" />
+              </div>
+
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 pt-2">
+                Beyond loans — everyday behaviour that counts
+              </p>
+
+              <div className="p-4 rounded-xl border border-slate-200">
+                <div className="flex items-baseline justify-between mb-2">
+                  <p className="text-sm font-semibold text-gray-900">Pay my rent on time for</p>
+                  <span className="text-sm font-bold text-emerald-600">{form.payRentOnTime} month{form.payRentOnTime !== 1 ? 's' : ''}</span>
+                </div>
+                <input type="range" min={0} max={12} value={form.payRentOnTime}
+                  onChange={e => set({ payRentOnTime: Number(e.target.value) })} className="w-full accent-emerald-600" />
+                <p className="text-xs text-muted-foreground mt-1">Rent counts towards your Housing dimension</p>
+              </div>
+
+              <div className="p-4 rounded-xl border border-slate-200">
+                <div className="flex items-baseline justify-between mb-2">
+                  <p className="text-sm font-semibold text-gray-900">Pay my bills on time for</p>
+                  <span className="text-sm font-bold text-emerald-600">{form.payBillsOnTime} month{form.payBillsOnTime !== 1 ? 's' : ''}</span>
+                </div>
+                <input type="range" min={0} max={12} value={form.payBillsOnTime}
+                  onChange={e => set({ payBillsOnTime: Number(e.target.value) })} className="w-full accent-emerald-600" />
+                <p className="text-xs text-muted-foreground mt-1">ZESCO, water and airtime build your Payments dimension</p>
+              </div>
+
+              <div className="flex items-start justify-between gap-4 p-4 rounded-xl border border-slate-200">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Finish my lay-by or instalment plan</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Completing what you started builds Commerce</p>
+                </div>
+                <Toggle on={form.finishInstalments} onChange={v => set({ finishInstalments: v })} />
+              </div>
+
+              <div className="p-4 rounded-xl border border-slate-200">
+                <div className="flex items-baseline justify-between mb-2">
+                  <p className="text-sm font-semibold text-gray-900">Stay in the same job for</p>
+                  <span className="text-sm font-bold text-emerald-600">{form.stayInJob} more month{form.stayInJob !== 1 ? 's' : ''}</span>
+                </div>
+                <input type="range" min={0} max={12} value={form.stayInJob}
+                  onChange={e => set({ stayInJob: Number(e.target.value) })} className="w-full accent-emerald-600" />
+                <p className="text-xs text-muted-foreground mt-1">Staying settled builds your Stability dimension</p>
               </div>
 
               <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 pt-2">Things that could hurt</p>
@@ -145,21 +191,25 @@ export default function ScoreSimulator() {
             </Panel>
 
             {result && (
-              <Panel title="Factor by factor" padded>
+              <Panel title="Dimension by dimension" padded>
                 <div className="space-y-3.5">
                   {result.breakdown.map((b: any) => {
-                    const delta = b.after - b.before;
+                    const unscored = b.before == null;
+                    const delta = unscored ? 0 : b.after - b.before;
                     return (
                       <div key={b.key}>
                         <div className="flex items-baseline justify-between mb-1.5 text-sm">
-                          <span className="font-medium text-gray-900">{FACTOR_HINTS[b.key]?.label ?? b.key}</span>
-                          <span className={cn('text-xs font-bold', delta > 0 ? 'text-emerald-600' : delta < 0 ? 'text-rose-600' : 'text-gray-400')}>
-                            {delta > 0 ? '+' : ''}{delta || '—'}
+                          <span className={cn('font-medium', unscored ? 'text-gray-400' : 'text-gray-900')}>
+                            {b.label ?? DIMENSION_META[b.key]?.label ?? b.key}
+                          </span>
+                          <span className={cn('text-xs font-bold',
+                            unscored ? 'text-gray-300' : delta > 0 ? 'text-emerald-600' : delta < 0 ? 'text-rose-600' : 'text-gray-400')}>
+                            {unscored ? 'not reported' : `${delta > 0 ? '+' : ''}${delta || '—'}`}
                           </span>
                         </div>
-                        <div className="relative">
+                        {!unscored && (
                           <Bar value={b.after} color={delta > 0 ? '#10B981' : delta < 0 ? '#EF4444' : '#94A3B8'} />
-                        </div>
+                        )}
                       </div>
                     );
                   })}

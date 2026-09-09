@@ -5,17 +5,16 @@ import {
 } from "@workspace/db";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { requireAuth, requireRole, type AuthRequest } from "../middlewares/auth.js";
+import { DIMENSIONS } from "../lib/dimensions.js";
 
 const router: IRouter = Router();
 const superAdmin = [requireAuth, requireRole("super_admin")] as const;
 
-export const FACTORS = [
-  { key: "repaymentHistory", label: "Repayment History", max: 300, description: "On-time payment record across all lenders" },
-  { key: "transactionPatterns", label: "Transaction Patterns", max: 250, description: "Volume and regularity of financial activity" },
-  { key: "loanDefaults", label: "Loan Defaults", max: 200, description: "Defaulted or written-off facilities" },
-  { key: "mobileMoney", label: "Mobile Money", max: 150, description: "Wallet behaviour as a financial-inclusion proxy" },
-  { key: "accountAge", label: "Account Age", max: 100, description: "Length of credit history and account tenure" },
-];
+/** The weight editor is driven by the scoring dimensions themselves, so a
+ *  dimension added to the model appears here without a UI change. */
+export const FACTORS = DIMENSIONS.map(d => ({
+  key: d.key, label: d.label, max: d.weight * 10, description: d.description,
+}));
 
 // ─── SCORECARDS ──────────────────────────────────────────────────────────────
 

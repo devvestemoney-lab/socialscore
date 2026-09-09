@@ -23,6 +23,11 @@ const FACTOR_LABELS: Record<string, string> = {
 };
 
 const money = (v: number) => `K${Math.round(v).toLocaleString()}`;
+
+const DIMENSION_COLORS: Record<string, string> = {
+  credit: '#4F6EF7', payments: '#2563EB', housing: '#16A34A', commerce: '#8B5CF6',
+  stability: '#14B8A6', education: '#F59E0B', reputation: '#EC4899',
+};
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 const fmtDateTime = (iso: string) => fmtDate(iso) + ', ' + new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
@@ -44,7 +49,7 @@ export function ReportView({ id, onBack }: { id: string; onBack: () => void }) {
   if (notFound) return <Panel padded><p className="text-center text-muted-foreground py-10">Report not available for your institution.</p></Panel>;
   if (!data) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>;
 
-  const { report, customer, latestScore, scoreHistory, loans, inquiries, consent, totals } = data;
+  const { report, customer, latestScore, scoreHistory, loans, inquiries, consent, totals, dimensions = [] } = data;
   const score = latestScore ? Math.round(Number(latestScore.score)) : null;
   const breakdown = latestScore?.scoreBreakdown ?? null;
   const initials = `${customer.firstName[0] ?? ''}${customer.lastName[0] ?? ''}`;
@@ -174,6 +179,46 @@ export function ReportView({ id, onBack }: { id: string; onBack: () => void }) {
           </div>
         </Panel>
       </div>
+
+      {/* scoring dimensions */}
+      {dimensions.length > 0 && (
+        <Panel title="Scoring Dimensions"
+          subtitle="What the score is built from, and how much reporting stands behind each dimension">
+          <Table head={['Dimension', 'Weight', 'Score', 'Evidence', 'On time', 'Late', 'Missed', 'Reported by']}>
+            {dimensions.map((d: any) => (
+              <tr key={d.key} className={cn('hover:bg-slate-50/70 transition-colors', d.value == null && 'opacity-60')}>
+                <Td>
+                  <span className="font-semibold text-gray-900">{d.label}</span>
+                  <p className="text-[11px] text-gray-400 leading-tight mt-0.5 max-w-[220px] whitespace-normal">{d.description}</p>
+                </Td>
+                <Td className="text-muted-foreground">{d.weight}%</Td>
+                <Td>
+                  {d.value == null
+                    ? <Badge tone="slate">not reported</Badge>
+                    : (
+                      <div className="flex items-center gap-2 min-w-[110px]">
+                        <span className="font-bold text-gray-900 w-7">{d.value}</span>
+                        <div className="flex-1"><Bar value={d.value} color={DIMENSION_COLORS[d.key] ?? '#4F6EF7'} /></div>
+                      </div>
+                    )}
+                </Td>
+                <Td className="text-muted-foreground">{d.records || '—'}</Td>
+                <Td className={d.onTime > 0 ? 'text-emerald-600 font-semibold' : 'text-muted-foreground'}>{d.onTime || '—'}</Td>
+                <Td className={d.late > 0 ? 'text-amber-600 font-semibold' : 'text-muted-foreground'}>{d.late || '—'}</Td>
+                <Td className={d.missed > 0 ? 'text-rose-600 font-semibold' : 'text-muted-foreground'}>{d.missed || '—'}</Td>
+                <Td className="text-muted-foreground text-xs max-w-[200px] whitespace-normal">
+                  {d.sources?.length ? d.sources.join(', ') : '—'}
+                </Td>
+              </tr>
+            ))}
+          </Table>
+          <p className="px-6 py-3 text-xs text-muted-foreground border-t border-slate-100">
+            A dimension nobody has reported on is excluded from the score rather than counted as zero — its
+            weight is shared across the dimensions that do have evidence, so a thin file is judged on what is
+            actually known.
+          </p>
+        </Panel>
+      )}
 
       {/* tradelines */}
       <Panel title={`${breakdown ? '5' : '4'} · Tradelines (${loans.length})`} subtitle="All facilities reported to the bureau across institutions">

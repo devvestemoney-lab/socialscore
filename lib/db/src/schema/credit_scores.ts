@@ -16,6 +16,10 @@ export const creditScoresTable = pgTable("credit_scores", {
     mobileMoney: number;
     accountAge: number;
   }>().notNull(),
+  /** The seven weighted scoring dimensions, each 0-100. Null means the
+      consumer has no evidence for that dimension and its weight was
+      redistributed across the others. */
+  dimensions: jsonb("dimensions").$type<Record<string, number | null>>(),
   recommendation: text("recommendation").notNull(),
   aiInsights: text("ai_insights"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

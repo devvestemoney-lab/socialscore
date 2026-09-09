@@ -20,6 +20,7 @@
     "seed:branches": "tsx ./src/seed-branches.ts",
     "seed:scorecards": "tsx ./src/seed-scorecards.ts",
     "seed:consumer": "tsx ./src/seed-consumer.ts",
+    "seed:signals": "tsx src/seed-signals.ts",
     "seed:consumer-scores": "tsx ./src/seed-consumer-scores.ts"
   },
   "dependencies": {

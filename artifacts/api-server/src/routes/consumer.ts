@@ -1,12 +1,14 @@
 import { Router, type IRouter } from "express";
 import {
-  db, usersTable, customersTable, creditScoresTable, loansTable,
+  db, usersTable, customersTable, creditScoresTable, consumerSignalsTable, loansTable,
   creditInquiriesTable, creditReportsTable, consentsTable, disputesTable,
   consumerAlertsTable, reportDownloadsTable, consumerPaymentsTable,
   loginEventsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { requireAuth, requireRole, type AuthRequest } from "../middlewares/auth.js";
+import { DIMENSIONS, DEFAULT_WEIGHTS, blendScore } from "../lib/dimensions.js";
+import { activeWeights } from "../lib/active-scorecard.js";
 
 const router: IRouter = Router();
 const consumer = [requireAuth, requireRole("customer")] as const;
@@ -52,6 +54,7 @@ router.get("/overview", ...consumer, async (req: AuthRequest, res) => {
 
   const latest = scores[0] ? Math.round(Number(scores[0].score)) : null;
   const previous = scores[1] ? Math.round(Number(scores[1].score)) : null;
+  const weights = await activeWeights();
   const open = loans.filter(l => l.status !== "closed");
 
   res.json({
@@ -65,6 +68,11 @@ router.get("/overview", ...consumer, async (req: AuthRequest, res) => {
       change: previous == null ? null : latest - previous,
       probabilityOfDefault: Number(scores[0].probabilityOfDefault),
       breakdown: scores[0].scoreBreakdown,
+      dimensions: DIMENSIONS.map(d => ({
+        key: d.key, label: d.label, hint: d.consumerHint,
+        weight: Number(weights[d.key] ?? d.weight),
+        value: (scores[0].dimensions as Record<string, number | null> | null)?.[d.key] ?? null,
+      })),
       recommendation: scores[0].recommendation,
       updatedAt: scores[0].createdAt,
     },
@@ -163,33 +171,108 @@ router.post("/simulate", ...consumer, async (req: AuthRequest, res) => {
     .where(eq(creditScoresTable.customerId, ctx.customer.id)).orderBy(desc(creditScoresTable.createdAt)).limit(1);
   if (!current) { res.status(400).json({ error: "Bad Request", message: "You need a credit score before you can run a simulation" }); return; }
 
-  const base = current.scoreBreakdown as Record<string, number>;
+  const base = (current.dimensions ?? {}) as Record<string, number | null>;
   const {
     settleArrears = false, payDownPct = 0, newLoan = false,
     closeOldest = false, extraInquiries = 0, monthsOnTime = 0,
+    payRentOnTime = 0, payBillsOnTime = 0, finishInstalments = false, stayInJob = 0,
   } = req.body ?? {};
 
-  const adj: Record<string, number> = { ...base };
+  const adj: Record<string, number | null> = { ...base };
   const notes: string[] = [];
-  if (settleArrears) { adj.repaymentHistory = Math.min(100, adj.repaymentHistory + 12); adj.loanDefaults = Math.min(100, adj.loanDefaults + 8); notes.push("Clearing arrears lifts your repayment history and eases the default penalty."); }
-  if (payDownPct > 0) { adj.transactionPatterns = Math.min(100, adj.transactionPatterns + Math.round((payDownPct / 100) * 15)); notes.push(`Reducing balances by ${payDownPct}% improves how much of your available credit you use.`); }
-  if (monthsOnTime > 0) { adj.repaymentHistory = Math.min(100, adj.repaymentHistory + Math.min(18, Math.round(monthsOnTime * 1.5))); notes.push(`${monthsOnTime} more months of on-time payments builds your track record.`); }
-  if (newLoan) { adj.accountAge = Math.max(0, adj.accountAge - 10); adj.transactionPatterns = Math.max(0, adj.transactionPatterns - 5); notes.push("A new facility shortens your average account age."); }
-  if (closeOldest) { adj.accountAge = Math.max(0, adj.accountAge - 15); notes.push("Closing your oldest account shortens your credit history."); }
-  if (extraInquiries > 0) { adj.transactionPatterns = Math.max(0, adj.transactionPatterns - extraInquiries * 3); notes.push(`${extraInquiries} more hard search(es) signals credit-seeking behaviour.`); }
+  const lift = (key: string, by: number) => {
+    if (adj[key] == null) return false;
+    adj[key] = Math.max(0, Math.min(100, (adj[key] as number) + by));
+    return true;
+  };
 
-  const WEIGHTS: Record<string, number> = { repaymentHistory: 300, transactionPatterns: 250, loanDefaults: 200, mobileMoney: 150, accountAge: 100 };
-  const toScore = (b: Record<string, number>) =>
-    Math.round(300 + (Object.entries(WEIGHTS).reduce((a, [k, max]) => a + ((b[k] ?? 0) / 100) * max, 0) / 1000) * 550);
+  if (settleArrears) {
+    lift("credit", 12);
+    notes.push("Clearing arrears lifts your credit dimension and eases the default penalty.");
+  }
+  if (payDownPct > 0) {
+    lift("credit", Math.round((payDownPct / 100) * 10));
+    notes.push(`Reducing balances by ${payDownPct}% leaves you less exposed.`);
+  }
+  if (monthsOnTime > 0) {
+    lift("credit", Math.min(15, Math.round(monthsOnTime * 1.3)));
+    notes.push(`${monthsOnTime} more months of on-time loan payments builds your track record.`);
+  }
+  if (payRentOnTime > 0) {
+    if (lift("housing", Math.min(20, payRentOnTime * 2))) {
+      notes.push(`${payRentOnTime} months of rent paid on time strengthens your housing record.`);
+    } else {
+      notes.push("Ask your landlord to report your rent — housing is unscored on your file today.");
+    }
+  }
+  if (payBillsOnTime > 0) {
+    if (lift("payments", Math.min(18, payBillsOnTime * 2))) {
+      notes.push(`${payBillsOnTime} months of bills paid on time improves your payments record.`);
+    }
+  }
+  if (finishInstalments) {
+    if (lift("commerce", 14)) notes.push("Finishing your instalment plans shows you follow through.");
+    else notes.push("A completed lay-by or instalment plan would open your commerce dimension.");
+  }
+  if (stayInJob > 0) {
+    if (lift("stability", Math.min(16, stayInJob * 1.4))) {
+      notes.push(`Another ${stayInJob} months in the same job improves how settled you look.`);
+    }
+  }
+  if (newLoan) { lift("credit", -8); notes.push("A new facility shortens your average account age."); }
+  if (closeOldest) { lift("credit", -10); notes.push("Closing your oldest account shortens your credit history."); }
+  if (extraInquiries > 0) {
+    lift("credit", -extraInquiries * 3);
+    notes.push(`${extraInquiries} more hard search(es) signals credit-seeking behaviour.`);
+  }
 
   const currentScore = Math.round(Number(current.score));
-  const projected = Math.max(300, Math.min(850, toScore(adj)));
+  const projected = blendScore(adj, await activeWeights()).score;
   res.json({
     current: { score: currentScore, band: bandFor(currentScore), rating: ratingFor(currentScore) },
     projected: { score: projected, band: bandFor(projected), rating: ratingFor(projected) },
     change: projected - currentScore,
-    breakdown: Object.keys(WEIGHTS).map(k => ({ key: k, before: base[k] ?? 0, after: adj[k] ?? 0 })),
+    breakdown: DIMENSIONS.map(d => ({
+      key: d.key, label: d.label, before: base[d.key] ?? null, after: adj[d.key] ?? null,
+    })),
     notes,
+  });
+});
+
+/** The evidence behind each dimension — what has actually been reported. */
+router.get("/signals", ...consumer, async (req: AuthRequest, res) => {
+  const ctx = await me(req.user!.userId);
+  if (!ctx) { res.status(404).json({ error: "Not Found", message: "No bureau record" }); return; }
+  const [signals, [latest]] = await Promise.all([
+    db.select().from(consumerSignalsTable)
+      .where(eq(consumerSignalsTable.customerId, ctx.customer.id))
+      .orderBy(desc(consumerSignalsTable.dueDate)),
+    db.select().from(creditScoresTable)
+      .where(eq(creditScoresTable.customerId, ctx.customer.id))
+      .orderBy(desc(creditScoresTable.createdAt)).limit(1),
+  ]);
+  const scored = (latest?.dimensions ?? {}) as Record<string, number | null>;
+
+  res.json({
+    dimensions: DIMENSIONS.map(d => {
+      const mine = signals.filter(s => s.dimension === d.key);
+      const dated = mine.filter(s => s.status === "on_time" || s.status === "late" || s.status === "missed");
+      return {
+        key: d.key, label: d.label, hint: d.consumerHint, weight: d.weight,
+        value: scored[d.key] ?? null,
+        sources: [...new Set(mine.map(s => s.source))],
+        counts: {
+          total: mine.length,
+          onTime: dated.filter(s => s.status === "on_time").length,
+          late: dated.filter(s => s.status === "late").length,
+          missed: dated.filter(s => s.status === "missed").length,
+        },
+        records: mine.slice(0, 24).map(s => ({
+          id: s.id, kind: s.kind, source: s.source, amount: s.amount,
+          dueDate: s.dueDate, status: s.status, months: s.months,
+        })),
+      };
+    }),
   });
 });
 

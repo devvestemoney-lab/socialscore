@@ -52,6 +52,20 @@ export function FactorRow({ label, value, hint }: { label: string; value: number
   );
 }
 
+/** Display metadata for the seven scoring dimensions. The values and weights
+ *  come from the API; this only decides how each one is named and coloured. */
+export const DIMENSION_META: Record<string, { label: string; color: string; icon: string }> = {
+  credit:     { label: 'Credit',     color: '#4F6EF7', icon: 'credit' },
+  payments:   { label: 'Payments',   color: '#2563EB', icon: 'payments' },
+  housing:    { label: 'Housing',    color: '#16A34A', icon: 'housing' },
+  commerce:   { label: 'Commerce',   color: '#8B5CF6', icon: 'commerce' },
+  stability:  { label: 'Stability',  color: '#14B8A6', icon: 'stability' },
+  education:  { label: 'Education',  color: '#F59E0B', icon: 'education' },
+  reputation: { label: 'Reputation', color: '#EC4899', icon: 'reputation' },
+};
+
+/** Kept for scores written before the dimension model, which still carry the
+ *  five legacy factors in their breakdown. */
 export const FACTOR_HINTS: Record<string, { label: string; hint: string }> = {
   repaymentHistory: { label: 'Paying on time', hint: 'The single biggest factor — every payment you make on schedule helps.' },
   transactionPatterns: { label: 'How you use credit', hint: 'Steady, predictable activity scores better than sudden spikes.' },

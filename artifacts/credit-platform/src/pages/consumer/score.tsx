@@ -5,7 +5,7 @@ import { PageHeader, Panel, Badge, Bar } from '@/components/admin/page-kit';
 import { useAuth } from '@/hooks/use-auth';
 import { Gauge, TrendingUp, TrendingDown, Sparkles, Info, CheckCircle2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { API, ScoreDial, FactorRow, FACTOR_HINTS, BAND_COLOR, fmtDate } from './kit';
+import { API, ScoreDial, FactorRow, DIMENSION_META, BAND_COLOR, fmtDate } from './kit';
 import { cn } from '@/lib/utils';
 
 const BANDS = [
@@ -19,11 +19,16 @@ const BANDS = [
 export default function MyCreditScore() {
   const { request } = useAuth();
   const [data, setData] = useState<any>(null);
+  const [evidence, setEvidence] = useState<any[]>([]);
 
   useEffect(() => {
     (async () => {
-      const res = await request(`${API}/consumer/overview`);
-      setData(res.ok ? await res.json() : null);
+      const [overview, signals] = await Promise.all([
+        request(`${API}/consumer/overview`),
+        request(`${API}/consumer/signals`),
+      ]);
+      setData(overview.ok ? await overview.json() : null);
+      if (signals.ok) setEvidence((await signals.json()).dimensions ?? []);
     })();
   }, []);
 
@@ -42,8 +47,14 @@ export default function MyCreditScore() {
   );
 
   const chart = history.map((h: any) => ({ date: new Date(h.date).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }), score: h.score }));
-  const factors = Object.entries(FACTOR_HINTS).map(([k, m]) => ({ key: k, ...m, value: Number(score.breakdown?.[k] ?? 0) }));
-  const weakest = [...factors].sort((a, b) => a.value - b.value).slice(0, 2);
+  const byKey = new Map(evidence.map((e: any) => [e.key, e]));
+  const dims = (score.dimensions ?? []).map((d: any) => ({
+    ...d, meta: DIMENSION_META[d.key], evidence: byKey.get(d.key),
+  }));
+  const scored = dims.filter((d: any) => d.value != null);
+  const unscored = dims.filter((d: any) => d.value == null);
+  const weakest = [...scored].sort((a: any, b: any) => a.value - b.value).slice(0, 2);
+  const coverage = Math.round(scored.reduce((a: number, d: any) => a + d.weight, 0));
 
   return (
     <Layout>
@@ -93,21 +104,65 @@ export default function MyCreditScore() {
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6">
-          <Panel title="What's affecting your score" subtitle="Ranked by how much lenders weight them" padded>
+          <Panel title="What's building your score"
+            subtitle={`Seven dimensions — ${coverage}% of the weighting has evidence behind it`} padded>
             <div className="space-y-4">
-              {factors.map(f => <FactorRow key={f.key} label={f.label} value={f.value} hint={f.hint} />)}
+              {scored.map((d: any) => (
+                <div key={d.key}>
+                  <div className="flex items-baseline justify-between gap-3 mb-1.5">
+                    <div className="min-w-0">
+                      <span className="text-sm font-semibold text-gray-900">{d.label}</span>
+                      <span className="ml-2 text-[11px] font-medium text-gray-400">{d.weight}% of your score</span>
+                    </div>
+                    <span className="text-sm font-bold" style={{ color: d.meta?.color }}>{d.value}</span>
+                  </div>
+                  <Bar value={d.value} color={d.meta?.color ?? '#4F6EF7'} />
+                  <p className="text-xs text-muted-foreground mt-1.5">{d.hint}</p>
+                  {d.evidence?.counts?.total > 0 && (
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      {d.evidence.counts.total} record{d.evidence.counts.total === 1 ? '' : 's'}
+                      {d.evidence.counts.onTime > 0 && ` · ${d.evidence.counts.onTime} on time`}
+                      {d.evidence.counts.late > 0 && ` · ${d.evidence.counts.late} late`}
+                      {d.evidence.counts.missed > 0 && ` · ${d.evidence.counts.missed} missed`}
+                      {d.evidence.sources?.length > 0 && ` · reported by ${d.evidence.sources.slice(0, 2).join(', ')}`}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
+
+            {unscored.length > 0 && (
+              <div className="mt-6 pt-5 border-t border-slate-100">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                  Not yet counted
+                </p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Nobody has reported these about you, so they are left out rather than counted against
+                  you — the remaining dimensions carry the full weighting.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {unscored.map((d: any) => (
+                    <span key={d.key} className="px-3 py-1.5 rounded-lg border border-dashed border-slate-300 text-xs font-medium text-gray-500">
+                      {d.label} · {d.weight}%
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </Panel>
 
           <div className="space-y-6">
             <Panel title="Where to focus" subtitle="The two areas holding you back most" padded>
               <div className="space-y-3">
-                {weakest.map(f => (
-                  <div key={f.key} className="p-4 rounded-xl border border-amber-200 bg-amber-50/60">
-                    <p className="text-sm font-semibold text-gray-900">{f.label}</p>
-                    <p className="text-xs text-gray-600 mt-1">{f.hint}</p>
+                {weakest.map((d: any) => (
+                  <div key={d.key} className="p-4 rounded-xl border border-amber-200 bg-amber-50/60">
+                    <p className="text-sm font-semibold text-gray-900">{d.label} · {d.value}/100</p>
+                    <p className="text-xs text-gray-600 mt-1">{d.hint}</p>
                   </div>
                 ))}
+                {weakest.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Nothing is scored yet — your file needs some history first.</p>
+                )}
               </div>
               <Link href="/my/simulator" className="mt-4 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold transition-colors">
                 <Sparkles className="w-4 h-4" /> See what would change my score

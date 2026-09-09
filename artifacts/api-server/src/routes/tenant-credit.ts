@@ -1,11 +1,14 @@
 import { Router, type IRouter } from "express";
 import {
   db, creditReportsTable, creditInquiriesTable, customersTable,
-  creditScoresTable, loansTable, consentsTable,
+  creditScoresTable, consumerSignalsTable, loansTable, consentsTable,
 } from "@workspace/db";
 import { eq, desc, sql, and, or, ilike } from "drizzle-orm";
 import { tenantsTable } from "@workspace/db";
 import { requireAuth, requireRole, type AuthRequest } from "../middlewares/auth.js";
+
+import { DIMENSIONS } from "../lib/dimensions.js";
+import { activeWeights } from "../lib/active-scorecard.js";
 
 const router: IRouter = Router();
 const tenantUser = [requireAuth, requireRole("tenant_admin", "tenant_user")] as const;
@@ -92,7 +95,30 @@ router.get("/credit-reports/:id", ...tenantUser, async (req: AuthRequest, res) =
     }).from(consentsTable).where(eq(consentsTable.customerId, report.customerId)),
   ]);
 
+  const [signals, weights] = await Promise.all([
+    db.select().from(consumerSignalsTable).where(eq(consumerSignalsTable.customerId, report.customerId)),
+    activeWeights(),
+  ]);
+
   const latestScore = scores[0] ?? null;
+  const scored = (latestScore?.dimensions ?? {}) as Record<string, number | null>;
+
+  /** Each dimension with the evidence count standing behind it, so an analyst
+   *  can see whether a score rests on real reporting or on a thin file. */
+  const dimensions = DIMENSIONS.map(d => {
+    const mine = signals.filter(x => x.dimension === d.key);
+    const dated = mine.filter(x => ["on_time", "late", "missed"].includes(x.status));
+    return {
+      key: d.key, label: d.label, description: d.description,
+      weight: Number(weights[d.key] ?? d.weight),
+      value: scored[d.key] ?? null,
+      records: mine.length,
+      sources: [...new Set(mine.map(x => x.source))].slice(0, 6),
+      onTime: dated.filter(x => x.status === "on_time").length,
+      late: dated.filter(x => x.status === "late").length,
+      missed: dated.filter(x => x.status === "missed").length,
+    };
+  });
   const active = loans.filter(l => l.status === "active");
   const totals = {
     tradelines: loans.length,
@@ -106,7 +132,7 @@ router.get("/credit-reports/:id", ...tenantUser, async (req: AuthRequest, res) =
     hardInquiries90d: inquiries.filter(i => i.kind === "hard" && Date.now() - new Date(i.createdAt).getTime() < 90 * 86_400_000).length,
   };
 
-  res.json({ report, customer, latestScore, scoreHistory: scores, loans, inquiries, consent: consentSummary, totals });
+  res.json({ report, customer, latestScore, scoreHistory: scores, loans, inquiries, consent: consentSummary, totals, dimensions });
 });
 
 
