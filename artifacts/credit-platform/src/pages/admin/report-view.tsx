@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Panel, Badge, Table, Td, Bar, KpiGrid } from '@/components/admin/page-kit';
+import { BehaviouralRecord } from '@/components/behavioural-record';
 import { useAuth } from '@/hooks/use-auth';
 import {
   ArrowLeft, Printer, Fingerprint, Phone, MapPin, CalendarDays, ShieldCheck,
@@ -44,7 +45,7 @@ export function AdminReportView({ id, onBack }: { id: string; onBack: () => void
 
   const {
     report, customer: c, tenant = null, latestScore = null,
-    scoreHistory = [], loans = [], inquiries = [],
+    scoreHistory = [], loans = [], inquiries = [], behaviouralRecord = [],
   } = data;
   const consent = data.consent ?? { active: 0, forRequester: 0, latestExpiry: null };
   const totals = data.totals ?? {
@@ -195,6 +196,8 @@ export function AdminReportView({ id, onBack }: { id: string; onBack: () => void
           </div>
         </Panel>
       </div>
+
+      <BehaviouralRecord record={behaviouralRecord} />
 
       <Panel title={`${breakdown ? '5' : '4'} · Tradelines (${loans.length})`} subtitle="All facilities reported across institutions">
         <Table head={['Institution', 'Type', 'Principal', 'Outstanding', 'Rate', 'Disbursed', 'Missed', 'Status']}>

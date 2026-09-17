@@ -44,7 +44,7 @@ export function KpiGrid({ items }: { items: Kpi[] }) {
 
 /* ---------- Panel ---------- */
 export function Panel({ title, subtitle, action, children, className, padded = false }: {
-  title?: string; subtitle?: string; action?: React.ReactNode; children: React.ReactNode; className?: string; padded?: boolean;
+  title?: React.ReactNode; subtitle?: string; action?: React.ReactNode; children: React.ReactNode; className?: string; padded?: boolean;
 }) {
   return (
     <div className={cn('rounded-xl bg-white border border-slate-200 overflow-hidden', className)}>

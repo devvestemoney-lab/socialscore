@@ -9,6 +9,7 @@ import { requireAuth, requireRole, type AuthRequest } from "../middlewares/auth.
 
 import { DIMENSIONS } from "../lib/dimensions.js";
 import { activeWeights } from "../lib/active-scorecard.js";
+import { behaviouralRecord } from "../lib/behavioural-record.js";
 
 const router: IRouter = Router();
 const tenantUser = [requireAuth, requireRole("tenant_admin", "tenant_user")] as const;
@@ -132,7 +133,11 @@ router.get("/credit-reports/:id", ...tenantUser, async (req: AuthRequest, res) =
     hardInquiries90d: inquiries.filter(i => i.kind === "hard" && Date.now() - new Date(i.createdAt).getTime() < 90 * 86_400_000).length,
   };
 
-  res.json({ report, customer, latestScore, scoreHistory: scores, loans, inquiries, consent: consentSummary, totals, dimensions });
+  res.json({
+    report, customer, latestScore, scoreHistory: scores, loans, inquiries,
+    consent: consentSummary, totals, dimensions,
+    behaviouralRecord: behaviouralRecord(signals),
+  });
 });
 
 

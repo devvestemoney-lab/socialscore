@@ -73,6 +73,46 @@ async function run() {
       }
     }
 
+    // Airtime borrowing — MTN Xtra Time / Airtel Credit. Small, frequent, and
+    // repaid automatically off the next top-up, so it is the densest signal
+    // most Zambians have. Reported under payments alongside bills.
+    if (has(0.96)) {
+      const operator = r() < 0.55 ? "MTN Zambia" : "Airtel Zambia";
+      const advances = 4 + Math.floor(r() * 14);
+      for (let i = 0; i < advances; i++) {
+        const daysBack = Math.floor(r() * 180);
+        const due = new Date(Date.now() - daysBack * 86_400_000);
+        const st = statusFor(r, Math.min(0.97, quality + 0.08));
+        rows.push({
+          customerId: c.id, dimension: "payments", kind: "airtime_advance", source: operator,
+          amount: String([5, 10, 15, 20, 30, 50][Math.floor(r() * 6)]),
+          dueDate: iso(due),
+          paidDate: st === "missed" ? null : iso(new Date(due.getTime() + (st === "late" ? 4 : 1) * 86_400_000)),
+          status: st,
+          metadata: { product: operator === "MTN Zambia" ? "Xtra Time" : "Airtel Credit" },
+        });
+      }
+    }
+
+    // Mobile money loans — MTN Kongola / Airtel Kabet. Larger than airtime, a
+    // real short-term loan with a due date.
+    if (has(0.62)) {
+      const operator = r() < 0.5 ? "MTN Mobile Money" : "Airtel Money";
+      const loans = 1 + Math.floor(r() * 4);
+      for (let i = 0; i < loans; i++) {
+        const monthsBack = 1 + Math.floor(r() * 10);
+        const st = statusFor(r, quality);
+        rows.push({
+          customerId: c.id, dimension: "payments", kind: "mobile_money_loan", source: operator,
+          amount: String(100 + Math.floor(r() * 12) * 50),
+          dueDate: iso(monthsAgo(monthsBack)),
+          paidDate: st === "missed" ? null : iso(monthsAgo(monthsBack)),
+          status: st,
+          metadata: { product: operator === "MTN Mobile Money" ? "Kongola" : "Kabet" },
+        });
+      }
+    }
+
     // Commerce — lay-bys and instalment plans
     if (has(0.62)) {
       const plans = 1 + Math.floor(r() * 3);

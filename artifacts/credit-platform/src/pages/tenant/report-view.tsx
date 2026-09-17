@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Panel, Badge, Table, Td, Bar } from '@/components/admin/page-kit';
+import { BehaviouralRecord } from '@/components/behavioural-record';
 import { useAuth } from '@/hooks/use-auth';
 import {
   CalendarDays, ArrowLeft, Printer, Fingerprint, Phone, MapPin,
@@ -49,7 +50,7 @@ export function ReportView({ id, onBack }: { id: string; onBack: () => void }) {
   if (notFound) return <Panel padded><p className="text-center text-muted-foreground py-10">Report not available for your institution.</p></Panel>;
   if (!data) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>;
 
-  const { report, customer, latestScore, scoreHistory, loans, inquiries, consent, totals, dimensions = [] } = data;
+  const { report, customer, latestScore, scoreHistory, loans, inquiries, consent, totals, dimensions = [], behaviouralRecord = [] } = data;
   const score = latestScore ? Math.round(Number(latestScore.score)) : null;
   const breakdown = latestScore?.scoreBreakdown ?? null;
   const initials = `${customer.firstName[0] ?? ''}${customer.lastName[0] ?? ''}`;
@@ -219,6 +220,9 @@ export function ReportView({ id, onBack }: { id: string; onBack: () => void }) {
           </p>
         </Panel>
       )}
+
+      {/* everything reported outside lending — rent, airtime, bills, school fees */}
+      <BehaviouralRecord record={behaviouralRecord} />
 
       {/* tradelines */}
       <Panel title={`${breakdown ? '5' : '4'} · Tradelines (${loans.length})`} subtitle="All facilities reported to the bureau across institutions">
