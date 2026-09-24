@@ -145,6 +145,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CreditScoreResponse"
+        "422":
+          description: Not enough reported history to issue a score
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Customer not found
           content:
@@ -656,8 +662,11 @@ components:
           type: string
         score:
           type: number
-          minimum: 0
-          maximum: 1000
+          minimum: 300
+          maximum: 850
+        band:
+          type: string
+          enum: [A, B, C, D, E]
         rating:
           type: string
           enum: [Excellent, Good, Fair, Poor, Very Poor]
@@ -667,6 +676,25 @@ components:
           maximum: 1
         scoreBreakdown:
           $ref: "#/components/schemas/ScoreBreakdown"
+        dimensions:
+          type: array
+          items:
+            $ref: "#/components/schemas/DimensionScore"
+        coverage:
+          type: integer
+          nullable: true
+          description: Share of the scorecard's weight that had evidence behind it (0-100)
+        scorecardVersion:
+          type: string
+          nullable: true
+        reasonCodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReasonCode"
+        riskFlags:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskFlag"
         recommendation:
           type: string
         lastUpdated:
@@ -685,6 +713,65 @@ components:
         - scoreBreakdown
         - recommendation
         - lastUpdated
+
+    DimensionScore:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        value:
+          type: number
+          nullable: true
+          description: 0-100, or null when nothing has been reported for this dimension
+      required: [key, label, value]
+
+    ReasonCode:
+      type: object
+      properties:
+        dimension:
+          type: string
+        effect:
+          type: string
+          enum: [negative, positive]
+        text:
+          type: string
+      required: [dimension, effect, text]
+
+    RiskFlag:
+      type: object
+      properties:
+        code:
+          type: string
+          description: e.g. BETTING_HEAVY, BETTING_RISING, BETTING_LOSSES, LOAN_STACKING, NEGATIVE_CASHFLOW, IRREGULAR_INCOME, LOW_BALANCE, PEER_DEFAULT
+        severity:
+          type: string
+          enum: [high, medium, low]
+        title:
+          type: string
+        detail:
+          type: string
+      required: [code, severity, title, detail]
+
+    CashflowSummary:
+      type: object
+      description: Figures derived from mobile money. Lenders never receive the transactions themselves.
+      properties:
+        monthsOfData: { type: number }
+        transactions12m: { type: number }
+        avgMonthlyInflow: { type: number }
+        inflow90d: { type: number }
+        outflow90d: { type: number }
+        netFlowRatio90d: { type: number, nullable: true }
+        bettingOut90d: { type: number }
+        bettingNetLoss90d: { type: number }
+        bettingShare90d: { type: number, nullable: true }
+        bettingSharePrior90d: { type: number, nullable: true }
+        bettingDays90d: { type: number }
+        incomeVariation: { type: number, nullable: true }
+        lowBalanceShare90d: { type: number, nullable: true }
+        digitalLenders90d: { type: number }
 
     ScoreBreakdown:
       type: object
@@ -828,13 +915,29 @@ components:
           type: string
         customer:
           $ref: "#/components/schemas/CustomerProfile"
+        scorable:
+          type: boolean
+          description: False when the file is too thin to score; creditScore is then null
+        unscorableReason:
+          type: string
+          nullable: true
         creditScore:
-          $ref: "#/components/schemas/CreditScoreResponse"
+          allOf:
+            - $ref: "#/components/schemas/CreditScoreResponse"
+          nullable: true
         loanExposure:
           $ref: "#/components/schemas/LoanExposureResponse"
         riskLevel:
           type: string
           enum: [Low, Medium, High, Very High, Critical]
+        riskFlags:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskFlag"
+        cashflow:
+          allOf:
+            - $ref: "#/components/schemas/CashflowSummary"
+          nullable: true
         riskFactors:
           type: array
           items:
@@ -849,9 +952,11 @@ components:
       required:
         - nrc
         - customer
+        - scorable
         - creditScore
         - loanExposure
         - riskLevel
+        - riskFlags
         - riskFactors
         - recommendedCreditLimit
         - aiInsights

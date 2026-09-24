@@ -1,4 +1,5 @@
 import { Bar } from '@/components/admin/page-kit';
+import { DIMENSION_COLORS } from '@/components/risk-signals';
 import { cn } from '@/lib/utils';
 
 export const API = import.meta.env.BASE_URL.replace(/\/$/, '') + '/api';
@@ -55,13 +56,13 @@ export function FactorRow({ label, value, hint }: { label: string; value: number
 /** Display metadata for the seven scoring dimensions. The values and weights
  *  come from the API; this only decides how each one is named and coloured. */
 export const DIMENSION_META: Record<string, { label: string; color: string; icon: string }> = {
-  credit:     { label: 'Credit',     color: '#4F6EF7', icon: 'credit' },
-  payments:   { label: 'Payments',   color: '#2563EB', icon: 'payments' },
-  housing:    { label: 'Housing',    color: '#16A34A', icon: 'housing' },
-  commerce:   { label: 'Commerce',   color: '#8B5CF6', icon: 'commerce' },
-  stability:  { label: 'Stability',  color: '#14B8A6', icon: 'stability' },
-  education:  { label: 'Education',  color: '#F59E0B', icon: 'education' },
-  reputation: { label: 'Reputation', color: '#EC4899', icon: 'reputation' },
+  credit:    { label: 'Credit',       color: DIMENSION_COLORS.credit,    icon: 'credit' },
+  payments:  { label: 'Payments',     color: DIMENSION_COLORS.payments,  icon: 'payments' },
+  housing:   { label: 'Housing',      color: DIMENSION_COLORS.housing,   icon: 'housing' },
+  cashflow:  { label: 'Cash Flow',    color: DIMENSION_COLORS.cashflow,  icon: 'cashflow' },
+  peer:      { label: 'Peer Lending', color: DIMENSION_COLORS.peer,      icon: 'peer' },
+  commerce:  { label: 'Commerce',     color: DIMENSION_COLORS.commerce,  icon: 'commerce' },
+  stability: { label: 'Stability',    color: DIMENSION_COLORS.stability, icon: 'stability' },
 };
 
 /** Kept for scores written before the dimension model, which still carry the

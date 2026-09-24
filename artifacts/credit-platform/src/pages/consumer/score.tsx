@@ -7,6 +7,7 @@ import { Gauge, TrendingUp, TrendingDown, Sparkles, Info, CheckCircle2 } from 'l
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { API, ScoreDial, FactorRow, DIMENSION_META, BAND_COLOR, fmtDate } from './kit';
 import { cn } from '@/lib/utils';
+import { RiskFlags, ReasonList } from '@/components/risk-signals';
 
 const BANDS = [
   { band: 'E', range: '300–479', label: 'Very poor', meaning: 'Most lenders will decline. Focus on clearing arrears.' },
@@ -102,6 +103,21 @@ export default function MyCreditScore() {
             )}
           </Panel>
         </div>
+
+        <Panel title="What lenders see" subtitle="The reasons behind your score and any flags on your file — raise a dispute if something is wrong" padded>
+          <div className="grid lg:grid-cols-2 gap-6">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2.5">Why your score is {score.value}</p>
+              <ReasonList reasons={score.reasons} />
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2.5">Flags on your file</p>
+              {score.riskFlags?.length
+                ? <RiskFlags flags={score.riskFlags} compact />
+                : <p className="text-sm text-emerald-600 font-medium">Nothing is flagged on your file.</p>}
+            </div>
+          </div>
+        </Panel>
 
         <div className="grid lg:grid-cols-2 gap-6">
           <Panel title="What's building your score"

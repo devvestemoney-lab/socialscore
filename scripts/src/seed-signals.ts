@@ -1,18 +1,36 @@
-import { db, customersTable, consumerSignalsTable, creditScoresTable, loansTable } from "@workspace/db";
-import { sql } from "drizzle-orm";
-import {
-  computeDimensions, blendScore, DEFAULT_WEIGHTS, ratingFor,
-} from "../../artifacts/api-server/src/lib/dimensions.js";
+import { db, customersTable, consumerSignalsTable, mnoTransactionsTable } from "@workspace/db";
+import { like } from "drizzle-orm";
+import { categorise } from "../../artifacts/api-server/src/lib/mno.js";
+import { scoreConsumer } from "../../artifacts/api-server/src/lib/score-consumer.js";
+
+/**
+ * UAT data for the behavioural score: rent, bills and refuse collection, peer
+ * lending, instalments, employment, and six months of mobile money activity
+ * per consumer. Replaces all signals and all seeded MNO transactions, so it
+ * refuses to run against production.
+ */
 
 const LANDLORDS = ["Lusaka Property Holdings", "Kabulonga Estates", "Ndola Rentals", "Chelston Homes", "Woodlands Lettings"];
-const UTILITIES = ["ZESCO", "Lusaka Water & Sewerage", "MTN Zambia", "Airtel Zambia", "DStv Zambia"];
+const UTILITIES = ["ZESCO", "Lusaka Water & Sewerage", "MTN Zambia", "Airtel Zambia"];
+const REFUSE = ["Lusaka City Council — Refuse", "Ndola City Council — Refuse", "Kitwe City Council — Refuse", "Clean City Waste Collectors", "Green Bins Zambia"];
+const PEER_SOURCES = [
+  { name: "Chilimba group — Kalingalinga", kind: "savings_group_loan" },
+  { name: "Village banking — Chawama", kind: "savings_group_loan" },
+  { name: "Village banking — Kanyama", kind: "savings_group_loan" },
+  { name: "Peer lender (individual)", kind: "p2p_loan" },
+  { name: "P2P lending platform", kind: "p2p_loan" },
+];
 const RETAILERS = ["Game Stores", "Shoprite Lay-By", "Radian Stores", "Melcom Instalments", "Homes & Gardens"];
 const EMPLOYERS = ["Zambia Sugar Plc", "Lafarge Zambia", "Ministry of Health", "Zanaco", "Trade Kings", "Self-employed — trading"];
-const SCHOOLS = ["Lusaka Trust School", "Chalo Trust School", "Rhodes Park School", "UNZA", "Evelyn Hone College"];
+const BETTING = ["Betway", "Bolabet", "Gal Sport Betting", "Premier Bet", "BetPawa"];
+const MERCHANTS = ["Shoprite", "Pick n Pay", "Choppies", "Puma Filling Station", "Hungry Lion", "Pharmacy"];
+const BILLERS = ["ZESCO", "Lusaka Water & Sewerage"];
+const DIGITAL_LENDERS = ["Kongola", "Kabet", "LendNow App", "CashFlex App"];
 
 const pick = <T,>(a: T[], r: () => number) => a[Math.floor(r() * a.length)]!;
 const iso = (d: Date) => d.toISOString().slice(0, 10);
-const monthsAgo = (n: number) => new Date(Date.now() - n * 30 * 86_400_000);
+const DAY = 86_400_000;
+const monthsAgo = (n: number) => new Date(Date.now() - n * 30 * DAY);
 
 /** Deterministic per-customer randomness, so re-running produces the same file. */
 function seeded(key: string) {
@@ -28,12 +46,107 @@ function statusFor(r: () => number, quality: number) {
   return "missed" as const;
 }
 
+/** The network from the number: 096/076 MTN, 097/077 Airtel, 095 Zamtel. */
+function providerFor(phone: string): "mtn" | "airtel" | "zamtel" {
+  const code = phone.replace(/\D/g, "").slice(-9, -7);
+  return code === "96" || code === "76" ? "mtn" : code === "95" ? "zamtel" : "airtel";
+}
+
+type Txn = { at: number; direction: "in" | "out"; amount: number; type: string; counterparty: string };
+
+/**
+ * Six months of wallet activity shaped by a persona: how income arrives,
+ * how much of it is spent, and how much goes to betting — including people
+ * whose betting has grown sharply in the last three months.
+ */
+function wallet(r: () => number, quality: number): Txn[] {
+  const salaried = r() < 0.58;
+  const monthlyIncome = 2500 + Math.floor(r() * 12000);
+  const betRoll = r();
+  const betting = betRoll < 0.6 ? "none" : betRoll < 0.8 ? "light" : betRoll < 0.92 ? "heavy" : "rising";
+  const stacking = r() < 0.1;
+  const txns: Txn[] = [];
+  const now = Date.now();
+
+  for (let m = 0; m < 6; m++) {
+    const start = now - (m + 1) * 30 * DAY;
+    const at = () => start + Math.floor(r() * 30 * DAY);
+
+    // Income
+    let income = 0;
+    if (salaried) {
+      income = Math.round(monthlyIncome * (0.95 + r() * 0.1));
+      txns.push({ at: start + 24 * DAY, direction: "in", amount: income, type: "SALARY", counterparty: "Employer payroll" });
+    } else {
+      const target = monthlyIncome * (0.4 + r() * 1.2);
+      while (income < target) {
+        const amt = 50 + Math.floor(r() * 900);
+        income += amt;
+        txns.push({ at: at(), direction: "in", amount: amt, type: r() < 0.6 ? "P2P" : "CASH_IN", counterparty: r() < 0.6 ? "Customer" : "Agent" });
+      }
+    }
+
+    // Betting share of spending, by persona — rising bettors triple in the last three months
+    const share = betting === "none" ? 0
+      : betting === "light" ? 0.02 + r() * 0.03
+      : betting === "heavy" ? 0.18 + r() * 0.22
+      : m < 3 ? 0.28 + r() * 0.12 : 0.03 + r() * 0.04;
+
+    // Spend roughly what comes in; weaker payers overspend
+    const spend = income * (0.8 + (1 - quality) * 0.35 + r() * 0.1);
+    let bet = spend * share;
+    while (bet > 0) {
+      const stake = Math.min(bet, 10 + Math.floor(r() * 190));
+      bet -= stake;
+      const op = pick(BETTING, r);
+      const when = at();
+      txns.push({ at: when, direction: "out", amount: Math.round(stake), type: "MERCHANT_PAY", counterparty: op });
+      if (r() < 0.25) txns.push({ at: when + DAY, direction: "in", amount: Math.round(stake * (1 + r() * 2)), type: "P2P", counterparty: op });
+    }
+    const rest = spend * (1 - share);
+    const parts: [number, string, () => string][] = [
+      [0.3, "CASH_OUT", () => "Agent"],
+      [0.25, "MERCHANT_PAY", () => pick(MERCHANTS, r)],
+      [0.1, "BILL_PAY", () => pick(BILLERS, r)],
+      [0.05, "AIRTIME", () => "Airtime"],
+      [0.3, "P2P", () => "Family / friends"],
+    ];
+    for (const [portion, type, who] of parts) {
+      let left = rest * portion;
+      while (left > 1) {
+        const amt = Math.min(left, 20 + Math.floor(r() * 600));
+        left -= amt;
+        txns.push({ at: at(), direction: "out", amount: Math.round(amt), type, counterparty: who() });
+      }
+    }
+
+    // Borrowing from several digital lenders in the last three months
+    if (stacking && m < 3) {
+      for (const lender of DIGITAL_LENDERS.slice(0, 3 + Math.floor(r() * 2))) {
+        const when = at();
+        const amt = 200 + Math.floor(r() * 8) * 100;
+        txns.push({ at: when, direction: "in", amount: amt, type: "LOAN_DISBURSEMENT", counterparty: lender });
+        txns.push({ at: when + 14 * DAY, direction: "out", amount: Math.round(amt * 1.15), type: "LOAN_REPAYMENT", counterparty: lender });
+      }
+    }
+  }
+
+  return txns.filter(t => t.at <= now).sort((a, b) => a.at - b.at);
+}
+
 async function run() {
+  if (process.env.NODE_ENV === "production") {
+    console.error("seed-signals replaces behavioural data wholesale — refusing to run with NODE_ENV=production.");
+    process.exit(1);
+  }
+
   const customers = await db.select().from(customersTable);
-  console.log(`Generating behavioural signals for ${customers.length} consumers...`);
+  console.log(`Generating behavioural signals and mobile money for ${customers.length} consumers...`);
 
   await db.delete(consumerSignalsTable);
+  await db.delete(mnoTransactionsTable).where(like(mnoTransactionsTable.reference, "SEED-%"));
   const rows: any[] = [];
+  const txnRows: any[] = [];
 
   for (const c of customers) {
     const r = seeded(c.nrc);
@@ -60,7 +173,7 @@ async function run() {
       });
     }
 
-    // Payments — utility and airtime bills from one to three providers
+    // Payments — utility bills from one to three providers
     const providers = UTILITIES.slice(0, 1 + Math.floor(r() * 3));
     for (const provider of providers) {
       for (let m = 1; m <= 8; m++) {
@@ -73,29 +186,38 @@ async function run() {
       }
     }
 
-    // Airtime borrowing — MTN Xtra Time / Airtel Credit. Small, frequent, and
-    // repaid automatically off the next top-up, so it is the densest signal
-    // most Zambians have. Reported under payments alongside bills.
+    // Refuse collection — monthly garbage fees to the council or a private collector
+    if (has(0.55)) {
+      const collector = pick(REFUSE, r);
+      for (let m = 1; m <= 6; m++) {
+        rows.push({
+          customerId: c.id, dimension: "payments", kind: "refuse_collection", source: collector,
+          amount: String(50 + Math.floor(r() * 100)),
+          dueDate: iso(monthsAgo(m)), paidDate: iso(monthsAgo(m)),
+          status: statusFor(r, quality),
+        });
+      }
+    }
+
+    // Airtime borrowing — MTN Xtra Time / Airtel Credit, repaid off the next top-up
     if (has(0.96)) {
       const operator = r() < 0.55 ? "MTN Zambia" : "Airtel Zambia";
       const advances = 4 + Math.floor(r() * 14);
       for (let i = 0; i < advances; i++) {
-        const daysBack = Math.floor(r() * 180);
-        const due = new Date(Date.now() - daysBack * 86_400_000);
+        const due = new Date(Date.now() - Math.floor(r() * 180) * DAY);
         const st = statusFor(r, Math.min(0.97, quality + 0.08));
         rows.push({
           customerId: c.id, dimension: "payments", kind: "airtime_advance", source: operator,
           amount: String([5, 10, 15, 20, 30, 50][Math.floor(r() * 6)]),
           dueDate: iso(due),
-          paidDate: st === "missed" ? null : iso(new Date(due.getTime() + (st === "late" ? 4 : 1) * 86_400_000)),
+          paidDate: st === "missed" ? null : iso(new Date(due.getTime() + (st === "late" ? 4 : 1) * DAY)),
           status: st,
           metadata: { product: operator === "MTN Zambia" ? "Xtra Time" : "Airtel Credit" },
         });
       }
     }
 
-    // Mobile money loans — MTN Kongola / Airtel Kabet. Larger than airtime, a
-    // real short-term loan with a due date.
+    // Mobile money loans — MTN Kongola / Airtel Kabet
     if (has(0.62)) {
       const operator = r() < 0.5 ? "MTN Mobile Money" : "Airtel Money";
       const loans = 1 + Math.floor(r() * 4);
@@ -110,6 +232,28 @@ async function run() {
           status: st,
           metadata: { product: operator === "MTN Mobile Money" ? "Kongola" : "Kabet" },
         });
+      }
+    }
+
+    // Peer lending — chilimba, village banking and person-to-person loans, repaid in instalments
+    if (has(0.4)) {
+      const loans = 1 + Math.floor(r() * 3);
+      for (let i = 0; i < loans; i++) {
+        const lender = pick(PEER_SOURCES, r);
+        const principal = 300 + Math.floor(r() * 30) * 100;
+        const instalments = 1 + Math.floor(r() * 3);
+        const startMonth = 1 + Math.floor(r() * 10);
+        for (let k = 0; k < instalments; k++) {
+          const due = monthsAgo(Math.max(0, startMonth - k));
+          const st = statusFor(r, quality);
+          rows.push({
+            customerId: c.id, dimension: "peer", kind: lender.kind, source: lender.name,
+            amount: String(Math.round((principal * 1.1) / instalments)),
+            dueDate: iso(due), paidDate: st === "missed" ? null : iso(due),
+            status: st,
+            metadata: { principal, instalment: `${k + 1} of ${instalments}` },
+          });
+        }
       }
     }
 
@@ -141,29 +285,20 @@ async function run() {
       status: "ongoing", months: 4 + Math.floor(r() * 72),
     });
 
-    // Education — school fees, where the consumer has that commitment
-    if (has(0.48)) {
-      const school = pick(SCHOOLS, r);
-      for (let term = 1; term <= 4; term++) {
-        rows.push({
-          customerId: c.id, dimension: "education", kind: "school_fee", source: school,
-          amount: String(800 + Math.floor(r() * 5000)),
-          dueDate: iso(monthsAgo(term * 3)), paidDate: iso(monthsAgo(term * 3)),
-          status: statusFor(r, quality),
+    // Mobile money — most consumers have a wallet; categorised exactly as live ingest does
+    if (has(0.85)) {
+      const provider = providerFor(c.phone);
+      let balance = 100 + Math.floor(r() * 800);
+      wallet(r, quality).forEach((t, i) => {
+        balance = Math.max(0, balance + (t.direction === "in" ? t.amount : -t.amount));
+        txnRows.push({
+          customerId: c.id, provider, reference: `SEED-${c.nrc}-${i}`,
+          occurredAt: new Date(t.at), direction: t.direction,
+          amount: t.amount.toFixed(2), balanceAfter: balance.toFixed(2),
+          mnoType: t.type, counterparty: t.counterparty,
+          category: categorise({ mnoType: t.type, direction: t.direction, counterparty: t.counterparty }),
         });
-      }
-    }
-
-    // Reputation — endorsements from institutions that have dealt with them
-    if (has(0.4)) {
-      const count = 1 + Math.floor(r() * 3);
-      for (let i = 0; i < count; i++) {
-        rows.push({
-          customerId: c.id, dimension: "reputation", kind: "endorsement",
-          source: pick([...LANDLORDS, ...EMPLOYERS, ...RETAILERS], r),
-          status: "ongoing",
-        });
-      }
+      });
     }
   }
 
@@ -171,60 +306,19 @@ async function run() {
     await db.insert(consumerSignalsTable).values(rows.slice(i, i + 500));
   }
   console.log(`  ${rows.length} signals written.`);
-
-  // Rescore everyone from the dimensions now that the evidence exists
-  console.log("Rescoring consumers across all seven dimensions...");
-  const [allSignals, allLoans] = await Promise.all([
-    db.select().from(consumerSignalsTable),
-    db.select().from(loansTable),
-  ]);
-  const signalsBy = new Map<string, any[]>();
-  for (const s of allSignals) (signalsBy.get(s.customerId) ?? signalsBy.set(s.customerId, []).get(s.customerId)!).push(s);
-  const loansBy = new Map<string, any[]>();
-  for (const l of allLoans) (loansBy.get(l.customerId) ?? loansBy.set(l.customerId, []).get(l.customerId)!).push(l);
-
-  const upheld = (await db.execute(sql`
-    select customer_id, count(*)::int as n from disputes
-    where status = 'resolved' and resolution ilike '%upheld%' group by customer_id`)).rows as any[];
-  const upheldBy = new Map(upheld.map(u => [u.customer_id, Number(u.n)]));
-
-  let scored = 0;
-  for (const c of customers) {
-    const signals = signalsBy.get(c.id) ?? [];
-    const loans = loansBy.get(c.id) ?? [];
-    const ageMonths = loans.length
-      ? Math.round((Date.now() - Math.min(...loans.map(l => new Date(l.disbursedAt ?? l.createdAt).getTime()))) / (30 * 86_400_000))
-      : 0;
-
-    const dimensions = computeDimensions({
-      signals, loans, accountAgeMonths: ageMonths,
-      disputesUpheldAgainst: upheldBy.get(c.id) ?? 0,
-    });
-    const { score, coverage } = blendScore(dimensions, DEFAULT_WEIGHTS);
-
-    await db.insert(creditScoresTable).values({
-      customerId: c.id,
-      score: String(score),
-      rating: ratingFor(score) as any,
-      probabilityOfDefault: String(Math.max(0.01, Math.min(0.99, 1 - (score - 300) / 550)).toFixed(4)),
-      dimensions,
-      scoreBreakdown: {
-        repaymentHistory: dimensions.credit ?? 0,
-        loanDefaults: dimensions.credit ?? 0,
-        transactionPatterns: dimensions.commerce ?? dimensions.payments ?? 0,
-        mobileMoney: dimensions.payments ?? 0,
-        accountAge: dimensions.stability ?? 0,
-      },
-      recommendation: score >= 660
-        ? "Approve — strong across the dimensions with evidence behind them."
-        : score >= 580
-        ? "Consider — mixed record. Conservative limit recommended."
-        : "Refer — weak or thin evidence across the scoring dimensions.",
-      aiInsights: `Scored on ${coverage}% weight coverage across seven dimensions.`,
-    });
-    scored++;
+  for (let i = 0; i < txnRows.length; i += 1000) {
+    await db.insert(mnoTransactionsTable).values(txnRows.slice(i, i + 1000));
   }
-  console.log(`  ${scored} consumers rescored.`);
+  console.log(`  ${txnRows.length} mobile money transactions written.`);
+
+  // Rescore everyone through the same service the API uses
+  console.log("Rescoring consumers...");
+  let scored = 0, unscorable = 0;
+  for (const c of customers) {
+    const outcome = await scoreConsumer(c.id);
+    if (outcome.scorable) scored++; else unscorable++;
+  }
+  console.log(`  ${scored} consumers scored, ${unscorable} too thin to score.`);
   process.exit(0);
 }
 

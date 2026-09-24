@@ -5,18 +5,25 @@
  * Zambia Multi-Tenant Enterprise Credit Scoring Platform API
  * OpenAPI spec version: 1.0.0
  */
+import type { CashflowSummary } from "./cashflowSummary";
 import type { CreditScoreResponse } from "./creditScoreResponse";
 import type { CustomerProfile } from "./customerProfile";
 import type { LoanExposureResponse } from "./loanExposureResponse";
 import type { RiskFactor } from "./riskFactor";
+import type { RiskFlag } from "./riskFlag";
 import type { RiskProfileResponseRiskLevel } from "./riskProfileResponseRiskLevel";
 
 export interface RiskProfileResponse {
   nrc: string;
   customer: CustomerProfile;
-  creditScore: CreditScoreResponse;
+  /** False when the file is too thin to score; creditScore is then null */
+  scorable: boolean;
+  unscorableReason?: string | null;
+  creditScore: CreditScoreResponse | null;
   loanExposure: LoanExposureResponse;
   riskLevel: RiskProfileResponseRiskLevel;
+  riskFlags: RiskFlag[];
+  cashflow?: CashflowSummary | null;
   riskFactors: RiskFactor[];
   recommendedCreditLimit: number;
   aiInsights: string;

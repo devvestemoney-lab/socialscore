@@ -9,19 +9,12 @@ import {
 } from 'lucide-react';
 import { CreditGauge } from '@/components/credit-gauge';
 import { Panel, Badge, Table, Td, Field, inputCls } from '@/components/admin/page-kit';
+import { RiskFlags, CashflowSummary, DIMENSION_COLORS } from '@/components/risk-signals';
 import { formatCurrency, cn } from '@/lib/utils';
 import { ResponsiveContainer, AreaChart, Area, XAxis, Tooltip, YAxis } from 'recharts';
 import { format } from 'date-fns';
 
 type Tab = 'overview' | 'breakdown' | 'loans' | 'decision';
-
-const SCORE_COMPONENTS = [
-  { key: 'repaymentHistory', label: 'Repayment History', max: 300, color: '#4F6EF7', description: 'On-time payments across all facilities' },
-  { key: 'transactionPatterns', label: 'Transaction Patterns', max: 250, color: '#8B5CF6', description: 'Consistency of financial activity' },
-  { key: 'loanDefaults', label: 'Loan Defaults', max: 200, color: '#F59E0B', description: 'Historical defaults and write-offs' },
-  { key: 'mobileMoney', label: 'Mobile Money', max: 150, color: '#10B981', description: 'Wallet usage and repayment behaviour' },
-  { key: 'accountAge', label: 'Account Age', max: 100, color: '#14B8A6', description: 'Length of credit history' },
-] as const;
 
 const LOAN_TONE: Record<string, string> = { active: 'green', defaulted: 'red', closed: 'slate', overdue: 'amber', written_off: 'red' };
 const RISK_TONE: Record<string, string> = { Low: 'green', Medium: 'amber', High: 'amber', 'Very High': 'red', Critical: 'red' };
@@ -46,21 +39,23 @@ export default function TenantDashboard() {
     if (nrc.trim()) { setSearchNrc(nrc.trim()); setActiveTab('overview'); }
   };
 
-  const scoreBreakdown = data?.creditScore?.scoreBreakdown;
   const loans = data?.loanExposure?.loans ?? [];
-  const score = data?.creditScore?.score ?? 0;
+  const creditScore = data?.creditScore ?? null;
+  const score = creditScore?.score ?? 0;
+  const highFlags = (data?.riskFlags ?? []).filter(f => f.severity === 'high');
 
   const getDecision = () => {
     const amount = parseFloat(loanAmount) || 0;
     const limit = data?.recommendedCreditLimit ?? 0;
-    if (score >= 700 && amount <= limit) return { decision: 'Approved', tone: 'emerald', icon: CheckCircle, message: 'Loan application meets all credit criteria. Recommend approval with standard terms.' };
-    if (score >= 500 && amount <= limit * 1.2) return { decision: 'Refer', tone: 'amber', icon: ClockIcon, message: 'Application requires manual review. Consider requesting additional collateral or a guarantor.' };
+    if (highFlags.length > 0 && score >= 580) return { decision: 'Refer', tone: 'amber', icon: ClockIcon, message: `High-severity risk flag${highFlags.length > 1 ? 's' : ''} on file (${highFlags.map(f => f.title.toLowerCase()).join(', ')}) — review before approving.` };
+    if (score >= 660 && amount <= limit) return { decision: 'Approved', tone: 'emerald', icon: CheckCircle, message: 'Loan application meets all credit criteria. Recommend approval with standard terms.' };
+    if (score >= 580 && amount <= limit * 1.2) return { decision: 'Refer', tone: 'amber', icon: ClockIcon, message: 'Application requires manual review. Consider requesting additional collateral or a guarantor.' };
     return { decision: 'Declined', tone: 'rose', icon: XCircle, message: 'Credit profile does not meet minimum lending criteria — high risk of default.' };
   };
 
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
-    { id: 'breakdown', label: 'Score Breakdown', icon: TrendingUp },
+    { id: 'breakdown', label: 'Dimensions & Cash Flow', icon: TrendingUp },
     { id: 'loans', label: `Loan Portfolio (${loans.length})`, icon: Briefcase },
     { id: 'decision', label: 'Decision Engine', icon: Brain },
   ];
@@ -148,7 +143,21 @@ export default function TenantDashboard() {
           </Panel>
         )}
 
-        {data && !isLoading && (
+        {data && !isLoading && !creditScore && (
+          <Panel padded>
+            <div className="flex flex-col items-center text-center py-8">
+              <div className="w-14 h-14 bg-amber-500/10 rounded-2xl flex items-center justify-center mb-4">
+                <AlertCircle className="w-7 h-7 text-amber-500" />
+              </div>
+              <h3 className="text-lg font-display font-bold text-gray-900 mb-1">
+                {data.customer.firstName} {data.customer.lastName} cannot be scored yet
+              </h3>
+              <p className="text-sm text-muted-foreground max-w-md">{data.unscorableReason}</p>
+            </div>
+          </Panel>
+        )}
+
+        {data && creditScore && !isLoading && (
           <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
             {/* ── Identity banner ── */}
             <Panel padded>
@@ -164,7 +173,7 @@ export default function TenantDashboard() {
                         {data.customer.firstName} {data.customer.lastName}
                       </h2>
                       <Badge tone={RISK_TONE[data.riskLevel as string] ?? 'slate'}>{data.riskLevel} risk</Badge>
-                      <Badge tone="blue">{data.creditScore.rating}</Badge>
+                      <Badge tone="blue">Band {creditScore.band} · {creditScore.rating}</Badge>
                     </div>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-sm text-muted-foreground">
                       <span className="inline-flex items-center gap-1.5"><Fingerprint className="w-3.5 h-3.5" /><span className="font-mono text-xs">{data.nrc}</span></span>
@@ -188,18 +197,25 @@ export default function TenantDashboard() {
               </div>
             </Panel>
 
+            {/* ── Risk flags, shown before anything else when present ── */}
+            {data.riskFlags.length > 0 && (
+              <Panel title="Risk Flags" subtitle="Behaviour to review regardless of the score" padded>
+                <RiskFlags flags={data.riskFlags} />
+              </Panel>
+            )}
+
             {/* ── Balanced two-column body ── */}
             <div className="grid lg:grid-cols-3 gap-6 items-start">
               {/* Left rail: score + exposure */}
               <div className="space-y-6">
                 <Panel padded>
                   <div className="flex flex-col items-center">
-                    <CreditGauge score={data.creditScore.score} rating={data.creditScore.rating} />
+                    <CreditGauge score={creditScore.score} rating={creditScore.rating} />
                     <div className="grid grid-cols-2 gap-3 w-full mt-5">
                       <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-center">
                         <p className="text-[11px] uppercase tracking-wider text-gray-400">Prob. of Default</p>
-                        <p className={cn('text-lg font-bold mt-0.5', data.creditScore.probabilityOfDefault < 0.1 ? 'text-emerald-600' : data.creditScore.probabilityOfDefault < 0.3 ? 'text-amber-600' : 'text-rose-600')}>
-                          {(data.creditScore.probabilityOfDefault * 100).toFixed(1)}%
+                        <p className={cn('text-lg font-bold mt-0.5', creditScore.probabilityOfDefault < 0.1 ? 'text-emerald-600' : creditScore.probabilityOfDefault < 0.3 ? 'text-amber-600' : 'text-rose-600')}>
+                          {(creditScore.probabilityOfDefault * 100).toFixed(1)}%
                         </p>
                       </div>
                       <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-center">
@@ -211,7 +227,7 @@ export default function TenantDashboard() {
                       <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">12-Month Score Trend</p>
                       <div className="h-20">
                         <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={data.creditScore.historicalScores ?? []}>
+                          <AreaChart data={creditScore.historicalScores ?? []}>
                             <defs>
                               <linearGradient id="scoreGrad" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#4F6EF7" stopOpacity={0.25} />
@@ -219,7 +235,7 @@ export default function TenantDashboard() {
                               </linearGradient>
                             </defs>
                             <XAxis dataKey="date" hide />
-                            <YAxis domain={['auto', 1000]} hide />
+                            <YAxis domain={[300, 850]} hide />
                             <Tooltip contentStyle={{ borderRadius: 10, border: '1px solid #E2E8F0', fontSize: 12 }}
                               labelFormatter={v => format(new Date(v), 'MMM yyyy')} />
                             <Area type="monotone" dataKey="score" stroke="#4F6EF7" strokeWidth={2} fill="url(#scoreGrad)" dot={false} />
@@ -268,12 +284,12 @@ export default function TenantDashboard() {
                 {activeTab === 'overview' && (
                   <Panel padded>
                     <h3 className="font-display font-bold text-gray-900 flex items-center gap-2 mb-4">
-                      <Sparkles className="w-4 h-4 text-violet-500" /> AI Credit Assessment
+                      <Sparkles className="w-4 h-4 text-violet-500" /> Credit Assessment
                     </h3>
                     <p className="text-sm text-gray-700 leading-relaxed p-4 rounded-xl bg-violet-500/5 border border-violet-500/15 mb-5">
                       {data.aiInsights}
                     </p>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">Key Risk Factors</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">Why this score</p>
                     <div className="grid sm:grid-cols-2 gap-3">
                       {data.riskFactors.map((factor: any, i: number) => (
                         <div key={i} className="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 hover:bg-slate-50/70 transition-colors">
@@ -292,50 +308,44 @@ export default function TenantDashboard() {
                   </Panel>
                 )}
 
-                {/* Score Breakdown */}
-                {activeTab === 'breakdown' && scoreBreakdown && (
+                {/* Dimensions & cash flow */}
+                {activeTab === 'breakdown' && (
                   <div className="space-y-5">
                     <Panel padded>
                       <div className="flex items-center justify-between mb-6">
                         <div>
-                          <h3 className="font-display font-bold text-gray-900">Score Component Breakdown</h3>
-                          <p className="text-xs text-muted-foreground mt-0.5">How each factor contributes to the total</p>
+                          <h3 className="font-display font-bold text-gray-900">Scoring Dimensions</h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Each 0–100 · {creditScore.coverage ?? '—'}% of the scorecard has evidence behind it
+                            {creditScore.scorecardVersion ? ` · ${creditScore.scorecardVersion}` : ''}
+                          </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-3xl font-display font-bold text-gray-900">{data.creditScore.score}</p>
-                          <p className="text-[11px] text-gray-400">/ 1000 total</p>
+                          <p className="text-3xl font-display font-bold text-gray-900">{creditScore.score}</p>
+                          <p className="text-[11px] text-gray-400">300–850 scale</p>
                         </div>
                       </div>
-                      <div className="space-y-5">
-                        {SCORE_COMPONENTS.map(comp => {
-                          const value = scoreBreakdown[comp.key];
-                          const pct = Math.round((value / comp.max) * 100);
-                          return (
-                            <div key={comp.key}>
-                              <div className="flex items-baseline justify-between mb-1.5">
-                                <div className="min-w-0">
-                                  <span className="text-sm font-medium text-gray-900">{comp.label}</span>
-                                  <span className="hidden sm:inline text-xs text-gray-400 ml-2">{comp.description}</span>
-                                </div>
-                                <span className="text-sm font-bold shrink-0" style={{ color: comp.color }}>
-                                  {value} <span className="text-xs font-normal text-gray-400">/ {comp.max}</span>
-                                </span>
-                              </div>
-                              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: comp.color }} />
-                              </div>
-                              <div className="flex justify-between mt-1 text-[11px] text-gray-400">
-                                <span>{pct}% of max</span>
-                                <span>{Math.round((comp.max / 1000) * 100)}% weight</span>
-                              </div>
+                      <div className="space-y-4">
+                        {(creditScore.dimensions ?? []).map(d => (
+                          <div key={d.key} className={cn(d.value == null && 'opacity-60')}>
+                            <div className="flex items-baseline justify-between mb-1.5">
+                              <span className="text-sm font-medium text-gray-900">{d.label}</span>
+                              <span className="text-sm font-bold" style={{ color: DIMENSION_COLORS[d.key] }}>
+                                {d.value ?? <span className="text-xs font-normal text-gray-400">not reported</span>}
+                              </span>
                             </div>
-                          );
-                        })}
+                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full transition-all duration-700"
+                                style={{ width: `${d.value ?? 0}%`, backgroundColor: DIMENSION_COLORS[d.key] }} />
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </Panel>
+                    <CashflowSummary cashflow={data.cashflow as Record<string, number | null> | null} />
                     <Panel padded>
                       <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Model Recommendation</p>
-                      <p className="text-sm text-gray-700 leading-relaxed">{data.creditScore.recommendation}</p>
+                      <p className="text-sm text-gray-700 leading-relaxed">{creditScore.recommendation}</p>
                     </Panel>
                   </div>
                 )}
@@ -419,11 +429,12 @@ export default function TenantDashboard() {
                         )}
                       </div>
 
-                      <div className="grid sm:grid-cols-3 gap-3">
+                      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
                         {[
-                          { label: 'Credit Score', value: `${data.creditScore.score} / 1000`, status: score >= 700 ? 'pass' : score >= 500 ? 'warn' : 'fail', threshold: '≥ 700 for auto-approval' },
+                          { label: 'Credit Score', value: `${creditScore.score} / 850`, status: score >= 660 ? 'pass' : score >= 580 ? 'warn' : 'fail', threshold: '≥ 660 for auto-approval' },
+                          { label: 'Risk Flags', value: highFlags.length ? `${highFlags.length} high` : `${data.riskFlags.length} flagged`, status: highFlags.length ? 'fail' : data.riskFlags.length ? 'warn' : 'pass', threshold: 'none high for auto-approval' },
                           { label: 'Loan vs Limit', value: `${Math.round((parseFloat(loanAmount) / Math.max(1, data.recommendedCreditLimit)) * 100)}%`, status: parseFloat(loanAmount) <= data.recommendedCreditLimit ? 'pass' : parseFloat(loanAmount) <= data.recommendedCreditLimit * 1.2 ? 'warn' : 'fail', threshold: `limit ${formatCurrency(data.recommendedCreditLimit)}` },
-                          { label: 'Default Probability', value: `${(data.creditScore.probabilityOfDefault * 100).toFixed(1)}%`, status: data.creditScore.probabilityOfDefault < 0.1 ? 'pass' : data.creditScore.probabilityOfDefault < 0.3 ? 'warn' : 'fail', threshold: '< 10% for auto-approval' },
+                          { label: 'Default Probability', value: `${(creditScore.probabilityOfDefault * 100).toFixed(1)}%`, status: creditScore.probabilityOfDefault < 0.1 ? 'pass' : creditScore.probabilityOfDefault < 0.3 ? 'warn' : 'fail', threshold: '< 10% for auto-approval' },
                         ].map(f => (
                           <div key={f.label} className="p-4 rounded-xl border border-slate-200">
                             <div className="flex items-center justify-between">

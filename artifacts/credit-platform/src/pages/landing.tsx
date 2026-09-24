@@ -1,6 +1,6 @@
 import { Link } from 'wouter';
 import {
-  Home, Smartphone, ShoppingCart, Briefcase, GraduationCap, ShieldCheck,
+  Home, Smartphone, ShoppingCart, Briefcase, ShieldCheck, Wallet, Users,
   Bell, LayoutDashboard, Gauge, FileText, History, Scale, Sparkles,
   User, Settings, LogOut, Lock, BadgeCheck, TrendingUp, CheckCircle2, Info,
   ArrowUp, ChevronDown, Heart, Landmark, HandCoins, Zap, Store, KeyRound,
@@ -12,11 +12,11 @@ import { ScorePreview } from '@/components/score-preview';
 
 const features = [
   { icon: Home, tint: '#16A34A', title: 'Housing', desc: 'Your rent payments build your Rent Score.' },
-  { icon: Smartphone, tint: '#2563EB', title: 'Payments', desc: 'Bill payments and mobile money improve your Payment Score.' },
+  { icon: Smartphone, tint: '#2563EB', title: 'Payments', desc: 'ZESCO, water, garbage collection and airtime paid on time build your Payment Score.' },
   { icon: ShoppingCart, tint: '#8B5CF6', title: 'Commerce', desc: 'Lay-bys, BNPL and instalments build your Commerce Score.' },
   { icon: Briefcase, tint: '#F59E0B', title: 'Stability', desc: 'Employment and residence stability increase your score.' },
-  { icon: GraduationCap, tint: '#14B8A6', title: 'Education', desc: 'School fee payments and education commitments count.' },
-  { icon: ShieldCheck, tint: '#EC4899', title: 'Reputation', desc: 'Your reliability and trustworthiness matter.' },
+  { icon: Wallet, tint: '#F59E0B', title: 'Cash Flow', desc: 'Steady mobile money income and spending within your means count.' },
+  { icon: Users, tint: '#EC4899', title: 'Peer Lending', desc: 'Repaying chilimba, village banking and peer loans builds your score.' },
 ];
 
 export default function Landing() {
@@ -137,7 +137,7 @@ export default function Landing() {
               { icon: Home, tint: '#16A34A', t: 'Rent counts', d: 'On-time rent builds your Rent Score month after month.' },
               { icon: Smartphone, tint: '#2563EB', t: 'Mobile money counts', d: 'MoMo bills and airtime advances feed your Payment Score.' },
               { icon: ShoppingCart, tint: '#8B5CF6', t: 'Lay-bys count', d: 'BNPL and instalment purchases grow your Commerce Score.' },
-              { icon: GraduationCap, tint: '#14B8A6', t: 'School fees count', d: 'Education commitments show reliability over time.' },
+              { icon: Users, tint: '#EC4899', t: 'Chilimba counts', d: 'Repaying village banking and peer loans on time builds your record.' },
             ].map(c => (
               <div key={c.t} className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style={{ background: `${c.tint}14` }}>
@@ -210,7 +210,7 @@ export default function Landing() {
               { icon: Landmark, t: 'Banks', d: 'Tradelines & repayment history' },
               { icon: HandCoins, t: 'Microfinance', d: 'Micro-loan performance' },
               { icon: Smartphone, t: 'Mobile Money', d: 'Wallet & airtime behaviour' },
-              { icon: Zap, t: 'Utilities', d: 'Power & water bill payments' },
+              { icon: Zap, t: 'Utilities & Councils', d: 'Power, water & refuse collection' },
               { icon: Store, t: 'Retail & BNPL', d: 'Lay-by and instalment data' },
               { icon: KeyRound, t: 'Landlords', d: 'Verified rent payments' },
             ].map(c => (

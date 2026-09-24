@@ -7,7 +7,7 @@ import {
 } from "@workspace/db";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { requireAuth, requireRole, type AuthRequest } from "../middlewares/auth.js";
-import { DIMENSIONS, DEFAULT_WEIGHTS, blendScore } from "../lib/dimensions.js";
+import { DIMENSIONS, blendScore } from "../lib/dimensions.js";
 import { activeWeights } from "../lib/active-scorecard.js";
 
 const router: IRouter = Router();
@@ -73,6 +73,11 @@ router.get("/overview", ...consumer, async (req: AuthRequest, res) => {
         weight: Number(weights[d.key] ?? d.weight),
         value: (scores[0].dimensions as Record<string, number | null> | null)?.[d.key] ?? null,
       })),
+      coverage: scores[0].coverage,
+      /** What is pulling the score down or holding it up, in plain words */
+      reasons: scores[0].reasonCodes ?? [],
+      /** The same flags a lender sees, so nothing on the file is hidden from its subject */
+      riskFlags: scores[0].riskFlags ?? [],
       recommendation: scores[0].recommendation,
       updatedAt: scores[0].createdAt,
     },
@@ -176,6 +181,7 @@ router.post("/simulate", ...consumer, async (req: AuthRequest, res) => {
     settleArrears = false, payDownPct = 0, newLoan = false,
     closeOldest = false, extraInquiries = 0, monthsOnTime = 0,
     payRentOnTime = 0, payBillsOnTime = 0, finishInstalments = false, stayInJob = 0,
+    cutBetting = false, repayPeerLoans = 0,
   } = req.body ?? {};
 
   const adj: Record<string, number | null> = { ...base };
@@ -219,6 +225,21 @@ router.post("/simulate", ...consumer, async (req: AuthRequest, res) => {
       notes.push(`Another ${stayInJob} months in the same job improves how settled you look.`);
     }
   }
+  if (cutBetting) {
+    const share = Number(current.cashflow?.bettingShare90d ?? 0);
+    if (share >= 0.05 && lift("cashflow", Math.min(45, Math.round((share - 0.05) * 150)))) {
+      notes.push("Stopping betting removes the biggest drag on your cash flow — lenders see this within 90 days.");
+    } else if (adj.cashflow != null) {
+      notes.push("Betting is not affecting your cash flow today.");
+    }
+  }
+  if (repayPeerLoans > 0) {
+    if (lift("peer", Math.min(20, repayPeerLoans * 3))) {
+      notes.push(`${repayPeerLoans} more peer or chilimba repayments on time strengthens your peer lending record.`);
+    } else {
+      notes.push("Ask your chilimba or village banking group to report your repayments — peer lending is unscored on your file today.");
+    }
+  }
   if (newLoan) { lift("credit", -8); notes.push("A new facility shortens your average account age."); }
   if (closeOldest) { lift("credit", -10); notes.push("Closing your oldest account shortens your credit history."); }
   if (extraInquiries > 0) {
@@ -254,6 +275,9 @@ router.get("/signals", ...consumer, async (req: AuthRequest, res) => {
   const scored = (latest?.dimensions ?? {}) as Record<string, number | null>;
 
   res.json({
+    /** Mobile money figures behind the cash-flow dimension */
+    cashflow: latest?.cashflow ?? null,
+    riskFlags: latest?.riskFlags ?? [],
     dimensions: DIMENSIONS.map(d => {
       const mine = signals.filter(s => s.dimension === d.key);
       const dated = mine.filter(s => s.status === "on_time" || s.status === "late" || s.status === "missed");

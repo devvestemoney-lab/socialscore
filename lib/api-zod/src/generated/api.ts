@@ -97,8 +97,8 @@ export const GetCreditScoreParams = zod.object({
     .describe("National Registration Card number or passport number"),
 });
 
-export const getCreditScoreResponseScoreMin = 0;
-export const getCreditScoreResponseScoreMax = 1000;
+export const getCreditScoreResponseScoreMin = 300;
+export const getCreditScoreResponseScoreMax = 850;
 
 export const getCreditScoreResponseProbabilityOfDefaultMin = 0;
 export const getCreditScoreResponseProbabilityOfDefaultMax = 1;
@@ -110,6 +110,7 @@ export const GetCreditScoreResponse = zod.object({
     .number()
     .min(getCreditScoreResponseScoreMin)
     .max(getCreditScoreResponseScoreMax),
+  band: zod.enum(["A", "B", "C", "D", "E"]).optional(),
   rating: zod.enum(["Excellent", "Good", "Fair", "Poor", "Very Poor"]),
   probabilityOfDefault: zod
     .number()
@@ -132,6 +133,50 @@ export const GetCreditScoreResponse = zod.object({
       .number()
       .describe("Score component from account age (0-100)"),
   }),
+  dimensions: zod
+    .array(
+      zod.object({
+        key: zod.string(),
+        label: zod.string(),
+        value: zod
+          .number()
+          .nullable()
+          .describe(
+            "0-100, or null when nothing has been reported for this dimension",
+          ),
+      }),
+    )
+    .optional(),
+  coverage: zod
+    .number()
+    .nullish()
+    .describe(
+      "Share of the scorecard's weight that had evidence behind it (0-100)",
+    ),
+  scorecardVersion: zod.string().nullish(),
+  reasonCodes: zod
+    .array(
+      zod.object({
+        dimension: zod.string(),
+        effect: zod.enum(["negative", "positive"]),
+        text: zod.string(),
+      }),
+    )
+    .optional(),
+  riskFlags: zod
+    .array(
+      zod.object({
+        code: zod
+          .string()
+          .describe(
+            "e.g. BETTING_HEAVY, BETTING_RISING, BETTING_LOSSES, LOAN_STACKING, NEGATIVE_CASHFLOW, IRREGULAR_INCOME, LOW_BALANCE, PEER_DEFAULT",
+          ),
+        severity: zod.enum(["high", "medium", "low"]),
+        title: zod.string(),
+        detail: zod.string(),
+      }),
+    )
+    .optional(),
   recommendation: zod.string(),
   lastUpdated: zod.date(),
   historicalScores: zod
@@ -193,11 +238,11 @@ export const GetRiskProfileParams = zod.object({
   nrc: zod.coerce.string(),
 });
 
-export const getRiskProfileResponseCreditScoreScoreMin = 0;
-export const getRiskProfileResponseCreditScoreScoreMax = 1000;
+export const getRiskProfileResponseCreditScoreOneScoreMin = 300;
+export const getRiskProfileResponseCreditScoreOneScoreMax = 850;
 
-export const getRiskProfileResponseCreditScoreProbabilityOfDefaultMin = 0;
-export const getRiskProfileResponseCreditScoreProbabilityOfDefaultMax = 1;
+export const getRiskProfileResponseCreditScoreOneProbabilityOfDefaultMin = 0;
+export const getRiskProfileResponseCreditScoreOneProbabilityOfDefaultMax = 1;
 
 export const getRiskProfileResponseLoanExposureCurrencyDefault = `ZMW`;
 
@@ -216,47 +261,100 @@ export const GetRiskProfileResponse = zod.object({
     consentGiven: zod.boolean(),
     createdAt: zod.date(),
   }),
-  creditScore: zod.object({
-    nrc: zod.string(),
-    customerId: zod.string(),
-    score: zod
-      .number()
-      .min(getRiskProfileResponseCreditScoreScoreMin)
-      .max(getRiskProfileResponseCreditScoreScoreMax),
-    rating: zod.enum(["Excellent", "Good", "Fair", "Poor", "Very Poor"]),
-    probabilityOfDefault: zod
-      .number()
-      .min(getRiskProfileResponseCreditScoreProbabilityOfDefaultMin)
-      .max(getRiskProfileResponseCreditScoreProbabilityOfDefaultMax),
-    scoreBreakdown: zod.object({
-      repaymentHistory: zod
+  scorable: zod
+    .boolean()
+    .describe(
+      "False when the file is too thin to score; creditScore is then null",
+    ),
+  unscorableReason: zod.string().nullish(),
+  creditScore: zod
+    .object({
+      nrc: zod.string(),
+      customerId: zod.string(),
+      score: zod
         .number()
-        .describe("Score component from repayment history (0-300)"),
-      loanDefaults: zod
+        .min(getRiskProfileResponseCreditScoreOneScoreMin)
+        .max(getRiskProfileResponseCreditScoreOneScoreMax),
+      band: zod.enum(["A", "B", "C", "D", "E"]).optional(),
+      rating: zod.enum(["Excellent", "Good", "Fair", "Poor", "Very Poor"]),
+      probabilityOfDefault: zod
         .number()
-        .describe("Score component from defaults (0-200)"),
-      transactionPatterns: zod
+        .min(getRiskProfileResponseCreditScoreOneProbabilityOfDefaultMin)
+        .max(getRiskProfileResponseCreditScoreOneProbabilityOfDefaultMax),
+      scoreBreakdown: zod.object({
+        repaymentHistory: zod
+          .number()
+          .describe("Score component from repayment history (0-300)"),
+        loanDefaults: zod
+          .number()
+          .describe("Score component from defaults (0-200)"),
+        transactionPatterns: zod
+          .number()
+          .describe("Score component from transaction patterns (0-250)"),
+        mobileMoney: zod
+          .number()
+          .describe("Score component from mobile money usage (0-150)"),
+        accountAge: zod
+          .number()
+          .describe("Score component from account age (0-100)"),
+      }),
+      dimensions: zod
+        .array(
+          zod.object({
+            key: zod.string(),
+            label: zod.string(),
+            value: zod
+              .number()
+              .nullable()
+              .describe(
+                "0-100, or null when nothing has been reported for this dimension",
+              ),
+          }),
+        )
+        .optional(),
+      coverage: zod
         .number()
-        .describe("Score component from transaction patterns (0-250)"),
-      mobileMoney: zod
-        .number()
-        .describe("Score component from mobile money usage (0-150)"),
-      accountAge: zod
-        .number()
-        .describe("Score component from account age (0-100)"),
-    }),
-    recommendation: zod.string(),
-    lastUpdated: zod.date(),
-    historicalScores: zod
-      .array(
-        zod.object({
-          score: zod.number(),
-          date: zod.date(),
-          rating: zod.string(),
-        }),
-      )
-      .optional(),
-  }),
+        .nullish()
+        .describe(
+          "Share of the scorecard's weight that had evidence behind it (0-100)",
+        ),
+      scorecardVersion: zod.string().nullish(),
+      reasonCodes: zod
+        .array(
+          zod.object({
+            dimension: zod.string(),
+            effect: zod.enum(["negative", "positive"]),
+            text: zod.string(),
+          }),
+        )
+        .optional(),
+      riskFlags: zod
+        .array(
+          zod.object({
+            code: zod
+              .string()
+              .describe(
+                "e.g. BETTING_HEAVY, BETTING_RISING, BETTING_LOSSES, LOAN_STACKING, NEGATIVE_CASHFLOW, IRREGULAR_INCOME, LOW_BALANCE, PEER_DEFAULT",
+              ),
+            severity: zod.enum(["high", "medium", "low"]),
+            title: zod.string(),
+            detail: zod.string(),
+          }),
+        )
+        .optional(),
+      recommendation: zod.string(),
+      lastUpdated: zod.date(),
+      historicalScores: zod
+        .array(
+          zod.object({
+            score: zod.number(),
+            date: zod.date(),
+            rating: zod.string(),
+          }),
+        )
+        .optional(),
+    })
+    .nullable(),
   loanExposure: zod.object({
     nrc: zod.string(),
     totalExposure: zod.number().describe("Total loan exposure in ZMW"),
@@ -291,6 +389,39 @@ export const GetRiskProfileResponse = zod.object({
     ),
   }),
   riskLevel: zod.enum(["Low", "Medium", "High", "Very High", "Critical"]),
+  riskFlags: zod.array(
+    zod.object({
+      code: zod
+        .string()
+        .describe(
+          "e.g. BETTING_HEAVY, BETTING_RISING, BETTING_LOSSES, LOAN_STACKING, NEGATIVE_CASHFLOW, IRREGULAR_INCOME, LOW_BALANCE, PEER_DEFAULT",
+        ),
+      severity: zod.enum(["high", "medium", "low"]),
+      title: zod.string(),
+      detail: zod.string(),
+    }),
+  ),
+  cashflow: zod
+    .object({
+      monthsOfData: zod.number().optional(),
+      transactions12m: zod.number().optional(),
+      avgMonthlyInflow: zod.number().optional(),
+      inflow90d: zod.number().optional(),
+      outflow90d: zod.number().optional(),
+      netFlowRatio90d: zod.number().nullish(),
+      bettingOut90d: zod.number().optional(),
+      bettingNetLoss90d: zod.number().optional(),
+      bettingShare90d: zod.number().nullish(),
+      bettingSharePrior90d: zod.number().nullish(),
+      bettingDays90d: zod.number().optional(),
+      incomeVariation: zod.number().nullish(),
+      lowBalanceShare90d: zod.number().nullish(),
+      digitalLenders90d: zod.number().optional(),
+    })
+    .describe(
+      "Figures derived from mobile money. Lenders never receive the transactions themselves.",
+    )
+    .nullish(),
   riskFactors: zod.array(
     zod.object({
       factor: zod.string(),

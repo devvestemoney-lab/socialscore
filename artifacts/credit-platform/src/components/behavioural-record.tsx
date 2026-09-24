@@ -1,21 +1,18 @@
 import { Panel, Badge, Table, Td } from '@/components/admin/page-kit';
-import { Home, Smartphone, ShoppingCart, Briefcase, GraduationCap, Heart } from 'lucide-react';
+import { Home, Smartphone, ShoppingCart, Briefcase, Users, Heart } from 'lucide-react';
+import { DIMENSION_COLORS } from '@/components/risk-signals';
 import { cn } from '@/lib/utils';
 
 /**
  * Everything reported about a consumer outside traditional lending — every
- * rent payment, airtime advance, school fee — itemised for the analyst.
+ * rent payment, bill, refuse collection fee and peer loan — itemised for the analyst.
  * Shared by the tenant and super-admin report views.
  */
 
 const ICON: Record<string, any> = {
-  housing: Home, payments: Smartphone, commerce: ShoppingCart,
-  stability: Briefcase, education: GraduationCap, reputation: Heart,
+  housing: Home, payments: Smartphone, peer: Users, commerce: ShoppingCart, stability: Briefcase,
 };
-const TINT: Record<string, string> = {
-  housing: '#16A34A', payments: '#2563EB', commerce: '#8B5CF6',
-  stability: '#14B8A6', education: '#F59E0B', reputation: '#EC4899',
-};
+const TINT = DIMENSION_COLORS;
 const STATUS: Record<string, { label: string; tone: string }> = {
   on_time: { label: 'On time', tone: 'green' },
   late: { label: 'Late', tone: 'amber' },
@@ -31,7 +28,7 @@ const fmtDate = (iso: string | null) =>
 export function BehaviouralRecord({ record }: { record: any[] }) {
   if (!record?.length) {
     return (
-      <Panel title="Behavioural Record" subtitle="Rent, bills, airtime, instalments, employment and school fees reported about this consumer" padded>
+      <Panel title="Behavioural Record" subtitle="Rent, bills, refuse collection, peer loans, instalments and employment reported about this consumer" padded>
         <p className="text-sm text-muted-foreground text-center py-8">
           Nothing outside traditional lending has been reported about this consumer yet.
         </p>

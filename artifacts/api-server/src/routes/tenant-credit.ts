@@ -1,15 +1,16 @@
 import { Router, type IRouter } from "express";
 import {
   db, creditReportsTable, creditInquiriesTable, customersTable,
-  creditScoresTable, consumerSignalsTable, loansTable, consentsTable,
+  creditScoresTable, consumerSignalsTable, loansTable, consentsTable, mnoTransactionsTable,
 } from "@workspace/db";
 import { eq, desc, sql, and, or, ilike } from "drizzle-orm";
 import { tenantsTable } from "@workspace/db";
 import { requireAuth, requireRole, type AuthRequest } from "../middlewares/auth.js";
 
-import { DIMENSIONS } from "../lib/dimensions.js";
+import { bandFor } from "../lib/dimensions.js";
 import { activeWeights } from "../lib/active-scorecard.js";
-import { behaviouralRecord } from "../lib/behavioural-record.js";
+import { behaviouralRecord, dimensionEvidence } from "../lib/behavioural-record.js";
+import { scoreConsumer } from "../lib/score-consumer.js";
 
 const router: IRouter = Router();
 const tenantUser = [requireAuth, requireRole("tenant_admin", "tenant_user")] as const;
@@ -96,30 +97,15 @@ router.get("/credit-reports/:id", ...tenantUser, async (req: AuthRequest, res) =
     }).from(consentsTable).where(eq(consentsTable.customerId, report.customerId)),
   ]);
 
-  const [signals, weights] = await Promise.all([
+  const [signals, weights, [{ transactions }]] = await Promise.all([
     db.select().from(consumerSignalsTable).where(eq(consumerSignalsTable.customerId, report.customerId)),
     activeWeights(),
+    db.select({ transactions: sql<number>`count(*)::int` }).from(mnoTransactionsTable)
+      .where(eq(mnoTransactionsTable.customerId, report.customerId)),
   ]);
 
   const latestScore = scores[0] ?? null;
-  const scored = (latestScore?.dimensions ?? {}) as Record<string, number | null>;
-
-  /** Each dimension with the evidence count standing behind it, so an analyst
-   *  can see whether a score rests on real reporting or on a thin file. */
-  const dimensions = DIMENSIONS.map(d => {
-    const mine = signals.filter(x => x.dimension === d.key);
-    const dated = mine.filter(x => ["on_time", "late", "missed"].includes(x.status));
-    return {
-      key: d.key, label: d.label, description: d.description,
-      weight: Number(weights[d.key] ?? d.weight),
-      value: scored[d.key] ?? null,
-      records: mine.length,
-      sources: [...new Set(mine.map(x => x.source))].slice(0, 6),
-      onTime: dated.filter(x => x.status === "on_time").length,
-      late: dated.filter(x => x.status === "late").length,
-      missed: dated.filter(x => x.status === "missed").length,
-    };
-  });
+  const dimensions = dimensionEvidence(signals, transactions, latestScore?.dimensions ?? {}, weights);
   const active = loans.filter(l => l.status === "active");
   const totals = {
     tradelines: loans.length,
@@ -140,8 +126,6 @@ router.get("/credit-reports/:id", ...tenantUser, async (req: AuthRequest, res) =
   });
 });
 
-
-const bandFor = (score: number) => (score >= 720 ? "A" : score >= 660 ? "B" : score >= 580 ? "C" : score >= 480 ? "D" : "E");
 
 /** Live pull: verify consent, record the inquiry, and generate a report */
 router.post("/consumer-search/pull", ...tenantUser, async (req: AuthRequest, res) => {
@@ -192,9 +176,10 @@ router.post("/consumer-search/pull", ...tenantUser, async (req: AuthRequest, res
     return;
   }
 
-  const [score] = await db.select().from(creditScoresTable)
-    .where(eq(creditScoresTable.customerId, customer.id))
-    .orderBy(desc(creditScoresTable.createdAt)).limit(1);
+  // Score from everything on file now, so the report carries the latest
+  // mobile money figures and risk flags rather than whatever was last stored
+  const scoring = await scoreConsumer(customer.id);
+  const score = scoring.scorable ? scoring.score : null;
   const scoreVal = score ? Math.round(Number(score.score)) : null;
 
   if (kind === "score") {
@@ -205,6 +190,8 @@ router.post("/consumer-search/pull", ...tenantUser, async (req: AuthRequest, res
       band: scoreVal != null ? bandFor(scoreVal) : null,
       rating: score?.rating ?? null,
       probabilityOfDefault: score ? Number(score.probabilityOfDefault) : null,
+      riskFlags: score?.riskFlags ?? [],
+      unscorableReason: scoring.scorable ? null : scoring.reason,
       inquiryId: inquiry.id,
     });
     return;

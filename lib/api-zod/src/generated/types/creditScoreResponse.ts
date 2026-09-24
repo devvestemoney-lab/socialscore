@@ -5,18 +5,23 @@
  * Zambia Multi-Tenant Enterprise Credit Scoring Platform API
  * OpenAPI spec version: 1.0.0
  */
+import type { CreditScoreResponseBand } from "./creditScoreResponseBand";
 import type { CreditScoreResponseRating } from "./creditScoreResponseRating";
+import type { DimensionScore } from "./dimensionScore";
 import type { HistoricalScore } from "./historicalScore";
+import type { ReasonCode } from "./reasonCode";
+import type { RiskFlag } from "./riskFlag";
 import type { ScoreBreakdown } from "./scoreBreakdown";
 
 export interface CreditScoreResponse {
   nrc: string;
   customerId: string;
   /**
-   * @minimum 0
-   * @maximum 1000
+   * @minimum 300
+   * @maximum 850
    */
   score: number;
+  band?: CreditScoreResponseBand;
   rating: CreditScoreResponseRating;
   /**
    * @minimum 0
@@ -24,6 +29,12 @@ export interface CreditScoreResponse {
    */
   probabilityOfDefault: number;
   scoreBreakdown: ScoreBreakdown;
+  dimensions?: DimensionScore[];
+  /** Share of the scorecard's weight that had evidence behind it (0-100) */
+  coverage?: number | null;
+  scorecardVersion?: string | null;
+  reasonCodes?: ReasonCode[];
+  riskFlags?: RiskFlag[];
   recommendation: string;
   lastUpdated: Date;
   historicalScores?: HistoricalScore[];

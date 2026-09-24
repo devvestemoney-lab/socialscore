@@ -1,13 +1,12 @@
 import { Router, type IRouter } from "express";
 import {
   db, customersTable, creditScoresTable, loansTable, consumerSignalsTable,
-  creditInquiriesTable, creditReportsTable, consentsTable, tenantsTable,
+  creditInquiriesTable, creditReportsTable, consentsTable, tenantsTable, mnoTransactionsTable,
 } from "@workspace/db";
 import { eq, desc, sql, ilike, or, and, gte, countDistinct } from "drizzle-orm";
 import { requireAuth, requireRole, type AuthRequest } from "../middlewares/auth.js";
-import { DIMENSIONS } from "../lib/dimensions.js";
 import { activeWeights } from "../lib/active-scorecard.js";
-import { behaviouralRecord } from "../lib/behavioural-record.js";
+import { behaviouralRecord, dimensionEvidence } from "../lib/behavioural-record.js";
 
 const router: IRouter = Router();
 const superAdmin = [requireAuth, requireRole("super_admin")] as const;
@@ -204,25 +203,13 @@ router.get("/credit-reports/:id", ...superAdmin, async (req, res) => {
   ]);
 
   const open = loans.filter(l => l.status !== "closed");
-  const [signals, weights] = await Promise.all([
+  const [signals, weights, [{ transactions }]] = await Promise.all([
     db.select().from(consumerSignalsTable).where(eq(consumerSignalsTable.customerId, report.customerId)),
     activeWeights(),
+    db.select({ transactions: sql<number>`count(*)::int` }).from(mnoTransactionsTable)
+      .where(eq(mnoTransactionsTable.customerId, report.customerId)),
   ]);
-  const scored = (scores[0]?.dimensions ?? {}) as Record<string, number | null>;
-  const dimensions = DIMENSIONS.map(d => {
-    const mine = signals.filter(x => x.dimension === d.key);
-    const dated = mine.filter(x => ["on_time", "late", "missed"].includes(x.status));
-    return {
-      key: d.key, label: d.label, description: d.description,
-      weight: Number(weights[d.key] ?? d.weight),
-      value: scored[d.key] ?? null,
-      records: mine.length,
-      sources: [...new Set(mine.map(x => x.source))].slice(0, 6),
-      onTime: dated.filter(x => x.status === "on_time").length,
-      late: dated.filter(x => x.status === "late").length,
-      missed: dated.filter(x => x.status === "missed").length,
-    };
-  });
+  const dimensions = dimensionEvidence(signals, transactions, scores[0]?.dimensions ?? {}, weights);
 
   res.json({
     report, customer, tenant: tenant ?? null, inquiry: inquiry ?? null,

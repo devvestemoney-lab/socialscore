@@ -1,11 +1,30 @@
 import { Router, type IRouter } from "express";
-import { db, customersTable, loansTable, auditLogsTable, creditScoresTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, customersTable, loansTable, auditLogsTable, creditScoresTable, type CreditScore } from "@workspace/db";
+import { asc, eq } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../middlewares/auth.js";
-import { calculateCreditScore } from "../lib/scoring.js";
-import { generateMnoData } from "../lib/mock-integrations.js";
+import { scoreConsumer } from "../lib/score-consumer.js";
+import { DIMENSIONS } from "../lib/dimensions.js";
 
 const router: IRouter = Router();
+
+type RiskLevel = "Low" | "Medium" | "High" | "Very High" | "Critical";
+const LEVELS: RiskLevel[] = ["Low", "Medium", "High", "Very High", "Critical"];
+const BAND_LEVEL: Record<string, number> = { A: 0, B: 0, C: 1, D: 2, E: 3 };
+const BAND_LIMIT: Record<string, number> = { A: 1, B: 0.8, C: 0.5, D: 0.25, E: 0 };
+
+/** Band sets the level; each high-severity flag moves it up one step. */
+function riskLevelFor(band: string, score: CreditScore): RiskLevel {
+  const high = (score.riskFlags ?? []).filter(f => f.severity === "high").length;
+  return LEVELS[Math.min(LEVELS.length - 1, BAND_LEVEL[band] + high)];
+}
+
+/** Three months of mobile money inflow where we have it, otherwise a
+ *  score-based figure — scaled by band and by how many loans are already open. */
+function creditLimitFor(band: string, score: CreditScore, activeLoans: number) {
+  const inflow = Number(score.cashflow?.avgMonthlyInflow ?? 0);
+  const base = inflow > 0 ? inflow * 3 : (Number(score.score) - 300) * 30;
+  return Math.round(base * BAND_LIMIT[band] * Math.max(0, 1 - activeLoans * 0.15));
+}
 
 router.get("/:p1/:p2/:p3", requireAuth, async (req: AuthRequest, res) => {
   const nrc = `${req.params.p1}/${req.params.p2}/${req.params.p3}`;
@@ -16,21 +35,16 @@ router.get("/:p1/:p2/:p3", requireAuth, async (req: AuthRequest, res) => {
     return;
   }
 
-  const loans = await db.select().from(loansTable).where(eq(loansTable.customerId, customer.id));
-  const mnoData = generateMnoData(nrc);
-
-  const scoring = calculateCreditScore({
-    loans,
-    mobileMoneyBalance: mnoData.mobileMoneyBalance,
-    avgMonthlyTransactions: mnoData.averageMonthlyTransactions,
-    totalTransactionVolume: mnoData.totalTransactionVolume,
-    accountAgeMonths: mnoData.accountAge,
-  });
+  const [outcome, loans, history] = await Promise.all([
+    scoreConsumer(customer.id),
+    db.select().from(loansTable).where(eq(loansTable.customerId, customer.id)),
+    db.select().from(creditScoresTable).where(eq(creditScoresTable.customerId, customer.id))
+      .orderBy(asc(creditScoresTable.createdAt)),
+  ]);
 
   const activeLoans = loans.filter(l => l.status === "active");
   const totalExposure = activeLoans.reduce((sum, l) => sum + Number(l.outstandingBalance), 0);
 
-  // Institution breakdown
   const institutionMap = new Map<string, { name: string; type: string; totalExposure: number; activeLoans: number }>();
   for (const loan of loans) {
     if (!institutionMap.has(loan.institution)) {
@@ -43,14 +57,21 @@ router.get("/:p1/:p2/:p3", requireAuth, async (req: AuthRequest, res) => {
     }
   }
 
+  const scored = outcome.scorable ? outcome.score : null;
+  const band = outcome.scorable ? outcome.band : null;
+
   await db.insert(auditLogsTable).values({
     action: "risk.profile.query",
     userId: req.user!.userId,
     tenantId: req.user!.tenantId || null,
     targetNrc: nrc,
     ipAddress: req.ip || null,
-    details: { riskLevel: scoring.riskLevel, score: scoring.score },
+    details: scored
+      ? { score: Number(scored.score), band, flags: (scored.riskFlags ?? []).map(f => f.code) }
+      : { scorable: false },
   });
+
+  const label = (key: string) => key === "flags" ? "Risk flags" : DIMENSIONS.find(d => d.key === key)?.label ?? key;
 
   res.json({
     nrc,
@@ -67,16 +88,22 @@ router.get("/:p1/:p2/:p3", requireAuth, async (req: AuthRequest, res) => {
       consentGiven: customer.consentGiven,
       createdAt: customer.createdAt.toISOString(),
     },
-    creditScore: {
+    scorable: outcome.scorable,
+    unscorableReason: outcome.scorable ? null : outcome.reason,
+    creditScore: scored && {
       nrc,
       customerId: customer.id,
-      score: scoring.score,
-      rating: scoring.rating,
-      probabilityOfDefault: scoring.probabilityOfDefault,
-      scoreBreakdown: scoring.breakdown,
-      recommendation: scoring.recommendation,
-      lastUpdated: new Date().toISOString(),
-      historicalScores: (await db.select().from(creditScoresTable).where(eq(creditScoresTable.customerId, customer.id))).slice(-8).map(s => ({ score: Number(s.score), date: s.createdAt.toISOString(), rating: s.rating })),
+      score: Math.round(Number(scored.score)),
+      band,
+      rating: scored.rating,
+      probabilityOfDefault: Number(scored.probabilityOfDefault),
+      scoreBreakdown: scored.scoreBreakdown,
+      dimensions: DIMENSIONS.map(d => ({ key: d.key, label: d.label, value: scored.dimensions?.[d.key] ?? null })),
+      coverage: scored.coverage,
+      scorecardVersion: scored.scorecardVersion,
+      recommendation: scored.recommendation,
+      lastUpdated: scored.createdAt.toISOString(),
+      historicalScores: history.slice(-8).map(s => ({ score: Math.round(Number(s.score)), date: s.createdAt.toISOString(), rating: s.rating })),
     },
     loanExposure: {
       nrc,
@@ -100,10 +127,16 @@ router.get("/:p1/:p2/:p3", requireAuth, async (req: AuthRequest, res) => {
       })),
       institutions: Array.from(institutionMap.values()),
     },
-    riskLevel: scoring.riskLevel,
-    riskFactors: scoring.riskFactors,
-    recommendedCreditLimit: scoring.recommendedCreditLimit,
-    aiInsights: scoring.aiInsights,
+    riskLevel: scored && band ? riskLevelFor(band, scored) : "Critical",
+    riskFlags: scored?.riskFlags ?? [],
+    /** Mobile money figures only — lenders never receive the transactions themselves */
+    cashflow: scored?.cashflow ?? null,
+    riskFactors: (scored?.reasonCodes ?? []).map(r => ({
+      factor: label(r.dimension), impact: r.effect, description: r.text,
+      weight: Number(DIMENSIONS.find(d => d.key === r.dimension)?.weight ?? 0) / 100,
+    })),
+    recommendedCreditLimit: scored && band ? creditLimitFor(band, scored, activeLoans.length) : 0,
+    aiInsights: scored?.aiInsights ?? (outcome.scorable ? "" : outcome.reason),
     generatedAt: new Date().toISOString(),
   });
 });

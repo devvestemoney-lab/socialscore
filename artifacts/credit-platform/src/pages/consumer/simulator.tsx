@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 const EMPTY = {
   settleArrears: false, payDownPct: 0, monthsOnTime: 0,
   payRentOnTime: 0, payBillsOnTime: 0, finishInstalments: false, stayInJob: 0,
+  repayPeerLoans: 0, cutBetting: false,
   newLoan: false, closeOldest: false, extraInquiries: 0,
 };
 
@@ -92,7 +93,25 @@ export default function ScoreSimulator() {
                 </div>
                 <input type="range" min={0} max={12} value={form.payBillsOnTime}
                   onChange={e => set({ payBillsOnTime: Number(e.target.value) })} className="w-full accent-emerald-600" />
-                <p className="text-xs text-muted-foreground mt-1">ZESCO, water and airtime build your Payments dimension</p>
+                <p className="text-xs text-muted-foreground mt-1">ZESCO, water, garbage collection and airtime build your Payments dimension</p>
+              </div>
+
+              <div className="p-4 rounded-xl border border-slate-200">
+                <div className="flex items-baseline justify-between mb-2">
+                  <p className="text-sm font-semibold text-gray-900">Repay my chilimba or peer loans on time</p>
+                  <span className="text-sm font-bold text-emerald-600">{form.repayPeerLoans} repayment{form.repayPeerLoans !== 1 ? 's' : ''}</span>
+                </div>
+                <input type="range" min={0} max={12} value={form.repayPeerLoans}
+                  onChange={e => set({ repayPeerLoans: Number(e.target.value) })} className="w-full accent-emerald-600" />
+                <p className="text-xs text-muted-foreground mt-1">Village banking, chilimba and peer loans build your Peer Lending dimension</p>
+              </div>
+
+              <div className="flex items-start justify-between gap-4 p-4 rounded-xl border border-slate-200">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Stop betting</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Betting from your mobile money wallet weighs on your Cash Flow dimension</p>
+                </div>
+                <Toggle on={form.cutBetting} onChange={v => set({ cutBetting: v })} />
               </div>
 
               <div className="flex items-start justify-between gap-4 p-4 rounded-xl border border-slate-200">

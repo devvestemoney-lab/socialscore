@@ -1,9 +1,9 @@
 import { Router, type IRouter } from "express";
-import { db, customersTable, loansTable, creditScoresTable, auditLogsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, customersTable, creditScoresTable, auditLogsTable } from "@workspace/db";
+import { asc, eq } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../middlewares/auth.js";
-import { calculateCreditScore } from "../lib/scoring.js";
-import { generateMnoData } from "../lib/mock-integrations.js";
+import { scoreConsumer } from "../lib/score-consumer.js";
+import { DIMENSIONS } from "../lib/dimensions.js";
 
 const router: IRouter = Router();
 
@@ -16,39 +16,7 @@ router.get("/:p1/:p2/:p3", requireAuth, async (req: AuthRequest, res) => {
     return;
   }
 
-  const loans = await db.select().from(loansTable).where(eq(loansTable.customerId, customer.id));
-  const mnoData = generateMnoData(nrc);
-
-  const result = calculateCreditScore({
-    loans,
-    mobileMoneyBalance: mnoData.mobileMoneyBalance,
-    avgMonthlyTransactions: mnoData.averageMonthlyTransactions,
-    totalTransactionVolume: mnoData.totalTransactionVolume,
-    accountAgeMonths: mnoData.accountAge,
-  });
-
-  // Save score to DB
-  await db.insert(creditScoresTable).values({
-    customerId: customer.id,
-    score: result.score.toString(),
-    rating: result.rating,
-    probabilityOfDefault: result.probabilityOfDefault.toString(),
-    scoreBreakdown: result.breakdown,
-    recommendation: result.recommendation,
-    aiInsights: result.aiInsights,
-  });
-
-  // Historical scores
-  const historicalRaw = await db
-    .select()
-    .from(creditScoresTable)
-    .where(eq(creditScoresTable.customerId, customer.id));
-
-  const historicalScores = historicalRaw.slice(-6).map(s => ({
-    score: Number(s.score),
-    date: s.createdAt.toISOString(),
-    rating: s.rating,
-  }));
+  const outcome = await scoreConsumer(customer.id);
 
   await db.insert(auditLogsTable).values({
     action: "credit.score.query",
@@ -56,19 +24,36 @@ router.get("/:p1/:p2/:p3", requireAuth, async (req: AuthRequest, res) => {
     tenantId: req.user!.tenantId || null,
     targetNrc: nrc,
     ipAddress: req.ip || null,
-    details: { score: result.score, rating: result.rating },
+    details: outcome.scorable ? { score: Number(outcome.score.score), band: outcome.band } : { scorable: false },
   });
+
+  if (!outcome.scorable) {
+    res.status(422).json({ error: "Unscorable", message: outcome.reason, coverage: outcome.coverage });
+    return;
+  }
+
+  const s = outcome.score;
+  const history = await db.select().from(creditScoresTable)
+    .where(eq(creditScoresTable.customerId, customer.id)).orderBy(asc(creditScoresTable.createdAt));
 
   res.json({
     nrc,
     customerId: customer.id,
-    score: result.score,
-    rating: result.rating,
-    probabilityOfDefault: result.probabilityOfDefault,
-    scoreBreakdown: result.breakdown,
-    recommendation: result.recommendation,
-    lastUpdated: new Date().toISOString(),
-    historicalScores,
+    score: Math.round(Number(s.score)),
+    band: outcome.band,
+    rating: s.rating,
+    probabilityOfDefault: Number(s.probabilityOfDefault),
+    scoreBreakdown: s.scoreBreakdown,
+    dimensions: DIMENSIONS.map(d => ({ key: d.key, label: d.label, value: s.dimensions?.[d.key] ?? null })),
+    coverage: s.coverage,
+    scorecardVersion: s.scorecardVersion,
+    reasonCodes: s.reasonCodes ?? [],
+    riskFlags: s.riskFlags ?? [],
+    recommendation: s.recommendation,
+    lastUpdated: s.createdAt.toISOString(),
+    historicalScores: history.slice(-6).map(h => ({
+      score: Math.round(Number(h.score)), date: h.createdAt.toISOString(), rating: h.rating,
+    })),
   });
 });
 

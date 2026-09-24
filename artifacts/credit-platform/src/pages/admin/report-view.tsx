@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Panel, Badge, Table, Td, Bar, KpiGrid } from '@/components/admin/page-kit';
+import { Panel, Badge, Table, Td, KpiGrid } from '@/components/admin/page-kit';
 import { BehaviouralRecord } from '@/components/behavioural-record';
+import { RiskFlags, ReasonList, CashflowSummary } from '@/components/risk-signals';
 import { useAuth } from '@/hooks/use-auth';
 import {
   ArrowLeft, Printer, Fingerprint, Phone, MapPin, CalendarDays, ShieldCheck,
@@ -17,10 +18,6 @@ const OUTCOME: Record<string, { label: string; tone: string }> = {
   report_issued: { label: 'report issued', tone: 'green' },
   declined_no_consent: { label: 'declined — no consent', tone: 'red' },
   declined_policy: { label: 'declined — policy', tone: 'red' },
-};
-const FACTORS: Record<string, string> = {
-  repaymentHistory: 'Repayment History', loanDefaults: 'Default History',
-  transactionPatterns: 'Transaction Patterns', mobileMoney: 'Mobile Money Behaviour', accountAge: 'Account Age',
 };
 const money = (v: number) => (v >= 1_000_000 ? `K${(v / 1_000_000).toFixed(2)}M` : `K${Math.round(v).toLocaleString()}`);
 const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
@@ -60,7 +57,6 @@ export function AdminReportView({ id, onBack }: { id: string; onBack: () => void
     hardInquiries90d: inquiries.filter((i: any) => i.kind === 'hard').length,
   };
   const score = latestScore ? Math.round(Number(latestScore.score)) : null;
-  const breakdown = latestScore?.scoreBreakdown ?? null;
   const initials = `${c.firstName[0] ?? ''}${c.lastName[0] ?? ''}`;
 
   return (
@@ -158,27 +154,18 @@ export function AdminReportView({ id, onBack }: { id: string; onBack: () => void
       </div>
 
       <div className="grid lg:grid-cols-5 gap-5 items-stretch">
-        {breakdown && (
+        {latestScore && (
           <Panel padded className="lg:col-span-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-4">3 · Score Factors</p>
-            <div className="space-y-3.5">
-              {Object.entries(FACTORS).map(([key, label]) => {
-                const v = Number(breakdown[key] ?? 0);
-                return (
-                  <div key={key}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="font-medium text-gray-900">{label}</span>
-                      <span className="text-muted-foreground">{v}/100</span>
-                    </div>
-                    <Bar value={v} color={v >= 75 ? '#10B981' : v >= 55 ? '#4F6EF7' : '#F59E0B'} />
-                  </div>
-                );
-              })}
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-4">3 · Risk Flags &amp; Reasons</p>
+            <div className="space-y-4">
+              <RiskFlags flags={latestScore.riskFlags} compact />
+              {!latestScore.riskFlags?.length && <p className="text-sm text-emerald-600 font-medium">No risk flags on this file.</p>}
+              <ReasonList reasons={latestScore.reasonCodes} />
             </div>
           </Panel>
         )}
-        <Panel padded className={breakdown ? 'lg:col-span-3' : 'lg:col-span-5'}>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-4">{breakdown ? '4' : '3'} · Account Summary</p>
+        <Panel padded className={latestScore ? 'lg:col-span-3' : 'lg:col-span-5'}>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-4">{latestScore ? '4' : '3'} · Account Summary</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
               ['Tradelines on file', totals.tradelines], ['Reporting institutions', totals.institutions],
@@ -197,9 +184,11 @@ export function AdminReportView({ id, onBack }: { id: string; onBack: () => void
         </Panel>
       </div>
 
+      {latestScore && <CashflowSummary cashflow={latestScore.cashflow} />}
+
       <BehaviouralRecord record={behaviouralRecord} />
 
-      <Panel title={`${breakdown ? '5' : '4'} · Tradelines (${loans.length})`} subtitle="All facilities reported across institutions">
+      <Panel title={`${latestScore ? '5' : '4'} · Tradelines (${loans.length})`} subtitle="All facilities reported across institutions">
         <Table head={['Institution', 'Type', 'Principal', 'Outstanding', 'Rate', 'Disbursed', 'Missed', 'Status']}>
           {loans.map((l: any) => (
             <tr key={l.id} className="hover:bg-slate-50/70 transition-colors">
@@ -217,7 +206,7 @@ export function AdminReportView({ id, onBack }: { id: string; onBack: () => void
         </Table>
       </Panel>
 
-      <Panel title={`${breakdown ? '6' : '5'} · Inquiry History (${inquiries.length})`} subtitle="Every institution that has accessed this file">
+      <Panel title={`${latestScore ? '6' : '5'} · Inquiry History (${inquiries.length})`} subtitle="Every institution that has accessed this file">
         <Table head={['Date', 'Institution', 'Type', 'Purpose', 'Outcome']}>
           {inquiries.map((i: any) => (
             <tr key={i.id} className={cn('transition-colors', i.institutionName === report.institutionName ? 'bg-blue-50/40' : 'hover:bg-slate-50/70')}>

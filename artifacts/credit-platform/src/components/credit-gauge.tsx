@@ -11,9 +11,9 @@ export function CreditGauge({ score, rating }: CreditGaugeProps) {
   const circumference = Math.PI * radius; // Semi-circle
   const strokeDasharray = `${circumference} ${circumference}`;
   
-  // Score mapped to 0-1000
-  const normalizedScore = Math.max(0, Math.min(1000, score));
-  const percentage = normalizedScore / 1000;
+  // Bureau scale runs 300-850
+  const normalizedScore = Math.max(300, Math.min(850, score));
+  const percentage = (normalizedScore - 300) / 550;
   const strokeDashoffset = circumference - percentage * circumference;
 
   let color = "text-green-500";
@@ -31,7 +31,7 @@ export function CreditGauge({ score, rating }: CreditGaugeProps) {
         <path
           d={`M 20 70 A ${radius} ${radius} 0 0 1 140 70`}
           fill="none"
-          className="stroke-white/10"
+          className="stroke-slate-200"
           strokeWidth="12"
           strokeLinecap="round"
         />
@@ -54,7 +54,7 @@ export function CreditGauge({ score, rating }: CreditGaugeProps) {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="text-5xl font-display font-bold text-white tracking-tighter"
+          className="text-5xl font-display font-bold text-gray-900 tracking-tighter"
         >
           {score}
         </motion.span>

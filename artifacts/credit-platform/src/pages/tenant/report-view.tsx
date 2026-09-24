@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Panel, Badge, Table, Td, Bar } from '@/components/admin/page-kit';
 import { BehaviouralRecord } from '@/components/behavioural-record';
+import { RiskFlags, ReasonList, CashflowSummary, DIMENSION_COLORS } from '@/components/risk-signals';
 import { useAuth } from '@/hooks/use-auth';
 import {
   CalendarDays, ArrowLeft, Printer, Fingerprint, Phone, MapPin,
@@ -18,17 +19,9 @@ const OUTCOME: Record<string, { label: string; tone: string }> = {
   declined_no_consent: { label: 'declined — no consent', tone: 'red' },
   declined_policy: { label: 'declined — policy', tone: 'red' },
 };
-const FACTOR_LABELS: Record<string, string> = {
-  repaymentHistory: 'Repayment History', loanDefaults: 'Default History',
-  transactionPatterns: 'Transaction Patterns', mobileMoney: 'Mobile Money Behaviour', accountAge: 'Account Age',
-};
 
 const money = (v: number) => `K${Math.round(v).toLocaleString()}`;
 
-const DIMENSION_COLORS: Record<string, string> = {
-  credit: '#4F6EF7', payments: '#2563EB', housing: '#16A34A', commerce: '#8B5CF6',
-  stability: '#14B8A6', education: '#F59E0B', reputation: '#EC4899',
-};
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 const fmtDateTime = (iso: string) => fmtDate(iso) + ', ' + new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
@@ -52,7 +45,6 @@ export function ReportView({ id, onBack }: { id: string; onBack: () => void }) {
 
   const { report, customer, latestScore, scoreHistory, loans, inquiries, consent, totals, dimensions = [], behaviouralRecord = [] } = data;
   const score = latestScore ? Math.round(Number(latestScore.score)) : null;
-  const breakdown = latestScore?.scoreBreakdown ?? null;
   const initials = `${customer.firstName[0] ?? ''}${customer.lastName[0] ?? ''}`;
 
   return (
@@ -142,27 +134,18 @@ export function ReportView({ id, onBack }: { id: string; onBack: () => void }) {
 
       {/* score factors + account summary */}
       <div className="grid lg:grid-cols-5 gap-5 items-stretch">
-        {breakdown && (
+        {latestScore && (
           <Panel padded className="lg:col-span-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-4">3 · Score Factors</p>
-            <div className="space-y-3.5">
-              {Object.entries(FACTOR_LABELS).map(([key, label]) => {
-                const v = Number(breakdown[key] ?? 0);
-                return (
-                  <div key={key}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="font-medium text-gray-900">{label}</span>
-                      <span className="text-muted-foreground">{v}/100</span>
-                    </div>
-                    <Bar value={v} color={v >= 75 ? '#10B981' : v >= 55 ? '#4F6EF7' : '#F59E0B'} />
-                  </div>
-                );
-              })}
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-4">3 · Risk Flags &amp; Reasons</p>
+            <div className="space-y-4">
+              <RiskFlags flags={latestScore.riskFlags} compact />
+              {!latestScore.riskFlags?.length && <p className="text-sm text-emerald-600 font-medium">No risk flags on this file.</p>}
+              <ReasonList reasons={latestScore.reasonCodes} />
             </div>
           </Panel>
         )}
-        <Panel padded className={breakdown ? 'lg:col-span-3' : 'lg:col-span-5'}>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-4">{breakdown ? '4' : '3'} · Account Summary</p>
+        <Panel padded className={latestScore ? 'lg:col-span-3' : 'lg:col-span-5'}>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-4">{latestScore ? '4' : '3'} · Account Summary</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
               ['Tradelines on file', totals.tradelines], ['Reporting institutions', totals.institutions],
@@ -180,6 +163,9 @@ export function ReportView({ id, onBack }: { id: string; onBack: () => void }) {
           </div>
         </Panel>
       </div>
+
+      {/* mobile money figures behind the cash-flow dimension */}
+      {latestScore && <CashflowSummary cashflow={latestScore.cashflow} />}
 
       {/* scoring dimensions */}
       {dimensions.length > 0 && (
@@ -221,11 +207,11 @@ export function ReportView({ id, onBack }: { id: string; onBack: () => void }) {
         </Panel>
       )}
 
-      {/* everything reported outside lending — rent, airtime, bills, school fees */}
+      {/* everything reported outside lending — rent, bills, refuse collection, peer loans */}
       <BehaviouralRecord record={behaviouralRecord} />
 
       {/* tradelines */}
-      <Panel title={`${breakdown ? '5' : '4'} · Tradelines (${loans.length})`} subtitle="All facilities reported to the bureau across institutions">
+      <Panel title={`${latestScore ? '5' : '4'} · Tradelines (${loans.length})`} subtitle="All facilities reported to the bureau across institutions">
         <Table head={['Institution', 'Type', 'Principal', 'Outstanding', 'Rate', 'Disbursed', 'Missed', 'Status']}>
           {loans.map((l: any) => (
             <tr key={l.id} className="hover:bg-slate-50/70 transition-colors">
@@ -244,7 +230,7 @@ export function ReportView({ id, onBack }: { id: string; onBack: () => void }) {
       </Panel>
 
       {/* inquiry footprint */}
-      <Panel title={`${breakdown ? '6' : '5'} · Inquiry History (${inquiries.length})`} subtitle="Who has accessed this consumer's file recently">
+      <Panel title={`${latestScore ? '6' : '5'} · Inquiry History (${inquiries.length})`} subtitle="Who has accessed this consumer's file recently">
         <Table head={['Date', 'Institution', 'Type', 'Purpose', 'Outcome']}>
           {inquiries.map((i: any) => (
             <tr key={i.id} className={cn('transition-colors', i.institutionName === (user?.tenantName ?? '') ? 'bg-blue-50/40' : 'hover:bg-slate-50/70')}>

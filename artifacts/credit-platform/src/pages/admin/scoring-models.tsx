@@ -8,14 +8,16 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+import { DIMENSION_COLORS } from '@/components/risk-signals';
+
 const API = import.meta.env.BASE_URL.replace(/\/$/, '') + '/api';
 
 const statusTone: Record<string, string> = { production: 'green', monitoring: 'amber', draft: 'blue', retired: 'slate' };
 const SEGMENT: Record<string, string> = { consumer: 'Consumer', sme: 'SME', micro: 'Mobile Money Micro', thin_file: 'Thin File' };
 const FACTOR_COLORS: Record<string, string> = {
-  credit: '#4F6EF7', payments: '#2563EB', housing: '#16A34A', commerce: '#8B5CF6',
-  stability: '#14B8A6', education: '#F59E0B', reputation: '#EC4899',
-  // legacy factor keys, still rendered for retired scorecards
+  ...DIMENSION_COLORS,
+  // retired dimensions and legacy factor keys, still rendered for old scorecards
+  education: '#94A3B8', reputation: '#94A3B8',
   repaymentHistory: '#4F6EF7', transactionPatterns: '#8B5CF6', loanDefaults: '#F59E0B',
   mobileMoney: '#10B981', accountAge: '#14B8A6',
 };

@@ -80,6 +80,17 @@ export interface IdentityVerifyResponse {
   message?: string;
 }
 
+export type CreditScoreResponseBand =
+  (typeof CreditScoreResponseBand)[keyof typeof CreditScoreResponseBand];
+
+export const CreditScoreResponseBand = {
+  A: "A",
+  B: "B",
+  C: "C",
+  D: "D",
+  E: "E",
+} as const;
+
 export type CreditScoreResponseRating =
   (typeof CreditScoreResponseRating)[keyof typeof CreditScoreResponseRating];
 
@@ -104,6 +115,44 @@ export interface ScoreBreakdown {
   accountAge: number;
 }
 
+export interface DimensionScore {
+  key: string;
+  label: string;
+  /** 0-100, or null when nothing has been reported for this dimension */
+  value: number | null;
+}
+
+export type ReasonCodeEffect =
+  (typeof ReasonCodeEffect)[keyof typeof ReasonCodeEffect];
+
+export const ReasonCodeEffect = {
+  negative: "negative",
+  positive: "positive",
+} as const;
+
+export interface ReasonCode {
+  dimension: string;
+  effect: ReasonCodeEffect;
+  text: string;
+}
+
+export type RiskFlagSeverity =
+  (typeof RiskFlagSeverity)[keyof typeof RiskFlagSeverity];
+
+export const RiskFlagSeverity = {
+  high: "high",
+  medium: "medium",
+  low: "low",
+} as const;
+
+export interface RiskFlag {
+  /** e.g. BETTING_HEAVY, BETTING_RISING, BETTING_LOSSES, LOAN_STACKING, NEGATIVE_CASHFLOW, IRREGULAR_INCOME, LOW_BALANCE, PEER_DEFAULT */
+  code: string;
+  severity: RiskFlagSeverity;
+  title: string;
+  detail: string;
+}
+
 export interface HistoricalScore {
   score: number;
   date: string;
@@ -114,10 +163,11 @@ export interface CreditScoreResponse {
   nrc: string;
   customerId: string;
   /**
-   * @minimum 0
-   * @maximum 1000
+   * @minimum 300
+   * @maximum 850
    */
   score: number;
+  band?: CreditScoreResponseBand;
   rating: CreditScoreResponseRating;
   /**
    * @minimum 0
@@ -125,9 +175,35 @@ export interface CreditScoreResponse {
    */
   probabilityOfDefault: number;
   scoreBreakdown: ScoreBreakdown;
+  dimensions?: DimensionScore[];
+  /** Share of the scorecard's weight that had evidence behind it (0-100) */
+  coverage?: number | null;
+  scorecardVersion?: string | null;
+  reasonCodes?: ReasonCode[];
+  riskFlags?: RiskFlag[];
   recommendation: string;
   lastUpdated: string;
   historicalScores?: HistoricalScore[];
+}
+
+/**
+ * Figures derived from mobile money. Lenders never receive the transactions themselves.
+ */
+export interface CashflowSummary {
+  monthsOfData?: number;
+  transactions12m?: number;
+  avgMonthlyInflow?: number;
+  inflow90d?: number;
+  outflow90d?: number;
+  netFlowRatio90d?: number | null;
+  bettingOut90d?: number;
+  bettingNetLoss90d?: number;
+  bettingShare90d?: number | null;
+  bettingSharePrior90d?: number | null;
+  bettingDays90d?: number;
+  incomeVariation?: number | null;
+  lowBalanceShare90d?: number | null;
+  digitalLenders90d?: number;
 }
 
 export type LoanRecordInstitutionType =
@@ -221,9 +297,14 @@ export interface RiskFactor {
 export interface RiskProfileResponse {
   nrc: string;
   customer: CustomerProfile;
-  creditScore: CreditScoreResponse;
+  /** False when the file is too thin to score; creditScore is then null */
+  scorable: boolean;
+  unscorableReason?: string | null;
+  creditScore: CreditScoreResponse | null;
   loanExposure: LoanExposureResponse;
   riskLevel: RiskProfileResponseRiskLevel;
+  riskFlags: RiskFlag[];
+  cashflow?: CashflowSummary | null;
   riskFactors: RiskFactor[];
   recommendedCreditLimit: number;
   aiInsights: string;
